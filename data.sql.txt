@@ -1,0 +1,293 @@
+CREATE DATABASE tutoring_center;
+USE tutoring_center;
+
+-- Bảng tài khoản đăng nhập
+CREATE TABLE account (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    role ENUM('student', 'teacher', 'center_manager', 'admin') NOT NULL
+);
+
+-- Bảng học sinh
+CREATE TABLE student (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    account_id INT UNIQUE,
+    full_name VARCHAR(100) NOT NULL,
+    date_of_birth DATE NOT NULL,
+    grade_level INT NOT NULL,
+    school VARCHAR(255),
+    FOREIGN KEY (account_id) REFERENCES account(id) ON DELETE CASCADE
+);
+
+-- Bảng giáo viên
+CREATE TABLE teacher (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    account_id INT UNIQUE,
+    full_name VARCHAR(100) NOT NULL,
+    employment_type ENUM('full-time', 'part-time') NOT NULL,
+    salary_per_session DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (account_id) REFERENCES account(id) ON DELETE CASCADE
+);
+
+-- Bảng nhóm học
+CREATE TABLE class (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    grade_level INT NOT NULL,
+    class_name VARCHAR(50) NOT NULL,
+    class_level ENUM('basic', 'intermediate', 'advanced') NOT NULL,
+    max_students INT NOT NULL
+);
+
+-- Bảng xếp lớp
+CREATE TABLE student_class (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    student_id INT,
+    class_id INT,
+    enrollment_date DATE NOT NULL,
+    status ENUM('active', 'inactive') DEFAULT 'active',
+    FOREIGN KEY (student_id) REFERENCES student(id) ON DELETE CASCADE,
+    FOREIGN KEY (class_id) REFERENCES class(id) ON DELETE CASCADE
+);
+
+-- Bảng thời khóa biểu
+CREATE TABLE schedule (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    class_id INT,
+    day_of_week ENUM('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday') NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    FOREIGN KEY (class_id) REFERENCES class(id) ON DELETE CASCADE
+);
+
+-- Bảng phân công giáo viên theo buổi
+CREATE TABLE class_teacher_assignment (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    schedule_id INT,
+    teacher_id INT,
+    date DATE NOT NULL,
+    FOREIGN KEY (schedule_id) REFERENCES schedule(id) ON DELETE CASCADE,
+    FOREIGN KEY (teacher_id) REFERENCES teacher(id) ON DELETE CASCADE
+);
+
+-- Bảng điểm danh học sinh
+CREATE TABLE attendance (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    student_id INT,
+    schedule_id INT,
+    date DATE NOT NULL,
+    status ENUM('present', 'absent', 'makeup_class') NOT NULL,
+    FOREIGN KEY (student_id) REFERENCES student(id) ON DELETE CASCADE,
+    FOREIGN KEY (schedule_id) REFERENCES schedule(id) ON DELETE CASCADE
+);
+
+-- Bảng yêu cầu học bù
+CREATE TABLE makeup_class_request (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    student_id INT,
+    original_schedule_id INT,
+    new_schedule_id INT,
+    status ENUM('pending', 'approved', 'denied') DEFAULT 'pending',
+    FOREIGN KEY (student_id) REFERENCES student(id) ON DELETE CASCADE,
+    FOREIGN KEY (original_schedule_id) REFERENCES schedule(id) ON DELETE CASCADE,
+    FOREIGN KEY (new_schedule_id) REFERENCES schedule(id) ON DELETE CASCADE
+);
+
+-- Bảng kiểm tra
+CREATE TABLE exam (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    class_id INT,
+    exam_name VARCHAR(100) NOT NULL,
+    exam_date DATE NOT NULL,
+    max_score INT NOT NULL,
+    FOREIGN KEY (class_id) REFERENCES class(id) ON DELETE CASCADE
+);
+
+-- Bảng điểm số
+CREATE TABLE score (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    student_id INT,
+    exam_id INT,
+    score DECIMAL(5,2) NOT NULL,
+    comment TEXT,
+    FOREIGN KEY (student_id) REFERENCES student(id) ON DELETE CASCADE,
+    FOREIGN KEY (exam_id) REFERENCES exam(id) ON DELETE CASCADE
+);
+
+-- Bảng chấm công giáo viên
+CREATE TABLE attendance_teacher (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    teacher_id INT,
+    schedule_id INT,
+    date DATE NOT NULL,
+    status ENUM('present', 'absent') NOT NULL,
+    FOREIGN KEY (teacher_id) REFERENCES teacher(id) ON DELETE CASCADE,
+    FOREIGN KEY (schedule_id) REFERENCES schedule(id) ON DELETE CASCADE
+);
+
+-- Bảng học phí
+CREATE TABLE student_fee (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    student_id INT,
+    amount_due DECIMAL(10,2) NOT NULL,
+    payment_period ENUM('monthly', 'quarterly', 'semester', 'yearly') NOT NULL,
+    due_date DATE NOT NULL,
+    FOREIGN KEY (student_id) REFERENCES student(id) ON DELETE CASCADE
+);
+
+-- Bảng thanh toán học phí
+CREATE TABLE student_payment (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    student_id INT,
+    amount_paid DECIMAL(10,2) NOT NULL,
+    payment_date DATE NOT NULL,
+    payment_method ENUM('cash', 'bank_transfer') NOT NULL,
+    status ENUM('paid', 'pending', 'overdue') DEFAULT 'pending',
+    FOREIGN KEY (student_id) REFERENCES student(id) ON DELETE CASCADE
+);
+
+-- Bảng báo cáo doanh thu
+CREATE TABLE revenue_report (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    report_date DATE NOT NULL,
+    total_revenue DECIMAL(15,2) NOT NULL,
+    total_expenses DECIMAL(15,2) NOT NULL,
+    profit DECIMAL(15,2) NOT NULL
+);
+
+-- Bảng báo cáo điểm danh
+CREATE TABLE attendance_report (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    student_id INT,
+    absent_count INT NOT NULL,
+    notified BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (student_id) REFERENCES student(id) ON DELETE CASCADE
+);
+
+-- Bảng phiếu lương giáo viên
+CREATE TABLE teacher_salary_report (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    teacher_id INT,
+    total_sessions INT NOT NULL,
+    total_salary DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (teacher_id) REFERENCES teacher(id) ON DELETE CASCADE
+);
+
+-- Dữ liệu bảng account
+INSERT INTO account (username, password, role) VALUES
+('student1', 'hashed_password1', 'student'),
+('teacher1', 'hashed_password2', 'teacher'),
+('manager1', 'hashed_password3', 'center_manager'),
+('admin1', 'hashed_password4', 'admin');
+
+-- Dữ liệu bảng student
+INSERT INTO student (account_id, full_name, date_of_birth, grade_level, school) VALUES
+(1, 'Nguyễn Văn A', '2008-05-10', 10, 'THPT Lê Hồng Phong'),
+(2, 'Trần Thị B', '2007-08-15', 11, 'THPT Nguyễn Trãi'),
+(3, 'Lê Văn C', '2009-02-20', 9, 'THCS Nguyễn Du'),
+(4, 'Phạm Thị D', '2006-12-05', 12, 'THPT Chu Văn An');
+
+-- Dữ liệu bảng teacher
+INSERT INTO teacher (account_id, full_name, employment_type, salary_per_session) VALUES
+(2, 'Thầy Trần Văn E', 'full-time', 500000),
+(3, 'Cô Lê Thị F', 'part-time', 300000),
+(4, 'Thầy Nguyễn Văn G', 'full-time', 600000),
+(5, 'Cô Phạm Thu H', 'part-time', 350000);
+
+-- Dữ liệu bảng class
+INSERT INTO class (grade_level, class_name, class_level, max_students) VALUES
+(10, 'Math-10A', 'basic', 30),
+(11, 'Math-11B', 'intermediate', 25),
+(12, 'Physics-12A', 'advanced', 20),
+(9, 'English-9C', 'basic', 35);
+
+-- Dữ liệu bảng student_class
+INSERT INTO student_class (student_id, class_id, enrollment_date, status) VALUES
+(1, 1, '2025-01-10', 'active'),
+(2, 2, '2025-01-12', 'active'),
+(3, 3, '2025-01-15', 'inactive'),
+(4, 4, '2025-01-18', 'active');
+
+-- Dữ liệu bảng schedule
+INSERT INTO schedule (class_id, day_of_week, start_time, end_time) VALUES
+(1, 'Monday', '08:00:00', '10:00:00'),
+(2, 'Wednesday', '14:00:00', '16:00:00'),
+(3, 'Friday', '09:00:00', '11:00:00'),
+(4, 'Saturday', '18:00:00', '20:00:00');
+
+-- Dữ liệu bảng class_teacher_assignment
+INSERT INTO class_teacher_assignment (schedule_id, teacher_id, date) VALUES
+(1, 1, '2025-02-01'),
+(2, 2, '2025-02-02'),
+(3, 3, '2025-02-03'),
+(4, 4, '2025-02-04');
+
+-- Dữ liệu bảng attendance
+INSERT INTO attendance (student_id, schedule_id, date, status) VALUES
+(1, 1, '2025-02-05', 'present'),
+(2, 2, '2025-02-06', 'absent'),
+(3, 3, '2025-02-07', 'present'),
+(4, 4, '2025-02-08', 'makeup_class');
+
+-- Dữ liệu bảng makeup_class_request
+INSERT INTO makeup_class_request (student_id, original_schedule_id, new_schedule_id, status) VALUES
+(2, 2, 3, 'pending'),
+(3, 3, 4, 'approved'),
+(1, 1, 2, 'denied'),
+(4, 4, 1, 'pending');
+
+-- Dữ liệu bảng exam
+INSERT INTO exam (class_id, exam_name, exam_date, max_score) VALUES
+(1, 'Math Midterm', '2025-03-01', 100),
+(2, 'Physics Final', '2025-04-10', 100),
+(3, 'English Quiz', '2025-02-20', 50),
+(4, 'Chemistry Test', '2025-03-15', 100);
+
+-- Dữ liệu bảng score
+INSERT INTO score (student_id, exam_id, score, comment) VALUES
+(1, 1, 85.5, 'Good work'),
+(2, 2, 78.0, 'Needs improvement'),
+(3, 3, 45.0, 'Below average'),
+(4, 4, 92.0, 'Excellent');
+
+-- Dữ liệu bảng attendance_teacher
+INSERT INTO attendance_teacher (teacher_id, schedule_id, date, status) VALUES
+(1, 1, '2025-02-05', 'present'),
+(2, 2, '2025-02-06', 'absent'),
+(3, 3, '2025-02-07', 'present'),
+(4, 4, '2025-02-08', 'present');
+
+-- Dữ liệu bảng student_fee
+INSERT INTO student_fee (student_id, amount_due, payment_period, due_date) VALUES
+(1, 1000000, 'monthly', '2025-03-01'),
+(2, 2800000, 'quarterly', '2025-04-01'),
+(3, 5500000, 'semester', '2025-06-01'),
+(4, 10000000, 'yearly', '2025-12-01');
+
+-- Dữ liệu bảng student_payment
+INSERT INTO student_payment (student_id, amount_paid, payment_date, payment_method, status) VALUES
+(1, 1000000, '2025-02-28', 'cash', 'paid'),
+(2, 2800000, '2025-03-30', 'bank_transfer', 'pending'),
+(3, 0, NULL, NULL, 'overdue'),
+(4, 10000000, '2025-01-01', 'bank_transfer', 'paid');
+
+-- Dữ liệu bảng revenue_report
+INSERT INTO revenue_report (report_date, total_revenue, total_expenses, profit) VALUES
+('2025-02-01', 50000000, 15000000, 35000000),
+('2025-03-01', 52000000, 16000000, 36000000),
+('2025-04-01', 48000000, 14000000, 34000000),
+('2025-05-01', 51000000, 15500000, 35500000);
+
+-- Dữ liệu bảng attendance_report
+INSERT INTO attendance_report (student_id, absent_count, notified) VALUES
+(1, 2, FALSE),
+(2, 5, TRUE),
+(3, 1, FALSE),
+(4, 6, TRUE);
+
+-- Dữ liệu bảng teacher_salary_report
+INSERT INTO teacher_salary_report (teacher_id, total_sessions, total_salary) VALUES
+(1, 10, 5000000),
+(2, 8, 2400000),
+(3, 12, 7200000),
+(4, 6, 2100000);
