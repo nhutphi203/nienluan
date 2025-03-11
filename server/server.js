@@ -62,6 +62,8 @@ app.use("/admin", adminRoutes);
 
 import notificationsRoutes from "./routes/notifications.js";
 app.use("/notifications", notificationsRoutes);
+import newsRoutes from "./routes/news.js";
+app.use("/news", newsRoutes);
 
 
 

@@ -13,67 +13,54 @@ const db = mysql.createPool({
     queueLimit: 0
 });
 
-
-// API lấy danh sách nhóm học
-router.get("/groups", async (req, res) => {
+// API lấy danh sách lớp
+router.get("/classes", async (req, res) => {
     try {
-        const [groups] = await db.execute("SELECT * FROM `groups`");
-        res.json(groups);
+        const [classes] = await db.execute("SELECT * FROM `class`");
+        res.json(classes);
     } catch (error) {
-        res.status(500).json({ error: "Lỗi lấy danh sách nhóm học", details: error.message });
+        res.status(500).json({ error: "Lỗi lấy danh sách lớp", details: error.message });
     }
 });
 
-router.post("/groups", async (req, res) => {
+// API thêm lớp mới
+router.post("/classes", async (req, res) => {
     try {
-        const { group_name, grade_level, level, schedule } = req.body;
+        const { name, subject, type, grade, max_student, fee_amount, current_student } = req.body;
 
-        console.log("📥 Dữ liệu nhận từ frontend:", req.body);
-
-        if (!group_name || !grade_level || !level || !schedule) {
-            return res.status(400).json({ error: "Thiếu thông tin nhóm học" });
+        if (!name || !subject || !type || !grade || !max_student || !fee_amount || current_student === undefined) {
+            return res.status(400).json({ error: "Thiếu thông tin lớp học" });
         }
 
         const sql = `
-            INSERT INTO \`groups\` (group_name, grade_level, level, schedule) 
-            VALUES (?, ?, ?, ?)
+            INSERT INTO class (name, subject, type, grade, max_student, fee_amount, current_student) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         `;
-        const values = [group_name, grade_level, level, schedule];
+        const values = [name, subject, type, grade, max_student, fee_amount, current_student];
 
         const [result] = await db.execute(sql, values);
 
-        console.log("✅ Nhóm học được thêm:", result);
-        res.status(201).json({ message: "Thêm nhóm học thành công", id: result.insertId });
+        res.status(201).json({ message: "Thêm lớp học thành công", id: result.insertId });
     } catch (error) {
-        console.error("❌ LỖI khi thêm nhóm học:", error);
-        res.status(500).json({ error: "Lỗi server khi thêm nhóm học" });
+        res.status(500).json({ error: "Lỗi khi thêm lớp học", details: error.message });
     }
 });
 
-
-
-router.delete("/groups/:id", async (req, res) => {
+// API xóa lớp học
+router.delete("/classes/:id", async (req, res) => {
     const { id } = req.params;
-
     try {
-        console.log(`🗑️ Đang xóa nhóm với ID: ${id}`);
-
-        const [rows] = await db.execute("SELECT * FROM `groups` WHERE id = ?", [id]);
-
+        const [rows] = await db.execute("SELECT * FROM `class` WHERE id = ?", [id]);
         if (rows.length === 0) {
-            return res.status(404).json({ error: "Nhóm học không tồn tại" });
+            return res.status(404).json({ error: "Lớp học không tồn tại" });
         }
-
-        await db.execute("DELETE FROM `groups` WHERE id = ?", [id]);
-
-        console.log("✔️ Nhóm học đã được xóa!");
-        res.json({ message: "Nhóm học đã được xóa" });
-
+        await db.execute("DELETE FROM `class` WHERE id = ?", [id]);
+        res.json({ message: "Lớp học đã được xóa" });
     } catch (error) {
-        console.error("❌ Lỗi khi xóa nhóm học:", error);
-        res.status(500).json({ error: "Lỗi khi xóa nhóm học", details: error.message });
+        res.status(500).json({ error: "Lỗi khi xóa lớp học", details: error.message });
     }
 });
+
 
 // API báo cáo tài chính
 router.get("/finance", async (req, res) => {
