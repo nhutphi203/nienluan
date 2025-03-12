@@ -13,7 +13,9 @@ const RegisterGroup = () => {
 
         try {
             console.log("📌 Fetching classes..."); // Debug tránh spam log
+
             const res = await axios.get(`http://localhost:5000/student/available-classes`);
+            console.log("📩 Dữ liệu từ API:", res.data); // Kiểm tra dữ liệu
 
             if (Array.isArray(res.data) && res.data.length > 0) {
                 setNoClassesAvailable(false);
@@ -63,11 +65,9 @@ const RegisterGroup = () => {
         }
     };
 
-
-
-
     const groupByClass = (data) => {
-        return data.map((item) => ({
+        console.log("📌 Dữ liệu trước khi xử lý:", data);
+        const grouped = data.map((item) => ({
             id: item.id,
             name: item.name,
             subject: item.subject,
@@ -77,18 +77,16 @@ const RegisterGroup = () => {
             current_student: item.current_student || 0,
             remaining_students: item.max_student - (item.current_student || 0),
             schedule: item.schedule
-                ? item.schedule.split("; ").map((sch) => {
-                    const parts = sch.split(": ");
-                    if (parts.length < 2) return null;
-                    const [date, timeRange] = parts;
-                    const times = timeRange.split(" - ");
-                    return times.length === 2
-                        ? { date_of_week: date, start_at: times[0], end_at: times[1] }
-                        : null;
+                ? item.schedule.split(", ").map((sch) => { // Sửa lại ở đây
+                    const match = sch.match(/(\w+) \((\d{2}:\d{2}:\d{2}) - (\d{2}:\d{2}:\d{2})\)/);
+                    return match ? { date_of_week: match[1], start_at: match[2], end_at: match[3] } : null;
                 }).filter(Boolean)
                 : [],
         }));
+        console.log("✅ Dữ liệu sau khi xử lý:", grouped);
+        return grouped;
     };
+
 
     return (
         <div className="max-w-4xl mx-auto p-6 bg-white rounded-xl shadow-lg">
@@ -99,6 +97,7 @@ const RegisterGroup = () => {
                         <tr className="bg-gray-100">
                             <th className="border p-2 text-left">Tên lớp</th>
                             <th className="border p-2 text-left">Loại</th>
+                            <th className="border p-2 text-left">Môn học</th>
                             <th className="border p-2 text-left">Khối</th>
                             <th className="border p-2 text-left">Còn lại</th>
                             <th className="border p-2 text-left">Lịch học</th>
@@ -117,6 +116,8 @@ const RegisterGroup = () => {
                                 <tr key={cls.id} className="hover:bg-gray-50">
                                     <td className="border p-2">{cls.name}</td>
                                     <td className="border p-2">{cls.type}</td>
+                                    <td className="border p-2">{cls.subject}</td>
+
                                     <td className="border p-2">{cls.grade}</td>
                                     <td className="border p-2">{cls.remaining_students} chỗ trống</td>
                                     <td className="border p-2">

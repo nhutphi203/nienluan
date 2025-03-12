@@ -122,7 +122,8 @@ const Home = ({ user, token }) => {
         if (schedule.length === 0) {
             return <p className="no-schedule-msg">Bạn chưa đăng ký nhóm nào hết!</p>;
         }
-        if (!schedule) return "Chưa có lịch";  // Xử lý trường hợp NULL
+        console.log("Dữ liệu lịch học từ API:", schedule);
+
 
 
 

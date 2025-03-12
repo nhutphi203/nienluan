@@ -34,13 +34,30 @@ router.get("/profile/:id", (req, res) => {
         res.json(results[0]);
     });
 });
-// 📌 API: Lấy danh sách các lớp còn đủ chỗ cho học viên đăng ký
 router.get("/available-classes", (req, res) => {
     const sql = `
-        SELECT c.id, c.name, c.subject, c.type, c.grade, c.max_student,
-               (SELECT COUNT(*) FROM registrations WHERE class_id = c.id) AS current_student
-        FROM class c
-        WHERE (SELECT COUNT(*) FROM registrations WHERE class_id = c.id) < c.max_student
+SELECT 
+    c.id, 
+    c.name, 
+    c.subject, 
+    c.type, 
+    CASE 
+        WHEN c.grade = 1 THEN 10
+        WHEN c.grade = 2 THEN 11
+        WHEN c.grade = 3 THEN 12
+        ELSE c.grade
+    END AS grade,
+    c.max_student,
+    (SELECT COUNT(*) FROM registrations WHERE class_id = c.id) AS current_student,
+    GROUP_CONCAT(
+        DISTINCT CONCAT(pt.date_of_week, ' (', pt.start_at, ' - ', pt.end_at, ')') 
+        ORDER BY FIELD(pt.date_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')
+        SEPARATOR ', '
+    ) AS schedule
+FROM class c
+JOIN period_time_class ptc ON c.id = ptc.class_id
+JOIN period_time pt ON ptc.period_time_id = pt.id
+GROUP BY c.id, c.name, c.subject, c.type, grade, c.max_student;
     `;
 
     db.query(sql, (err, results) => {
@@ -49,10 +66,24 @@ router.get("/available-classes", (req, res) => {
             return res.status(500).json({ error: "Lỗi khi lấy danh sách lớp học", details: err.message });
         }
 
-        // Trả về danh sách các lớp có chỗ trống
-        res.json(results);
+        // Map lại type theo trình độ
+        const typeMapping = {
+            "NORMAL": "Lớp cơ bản",
+            "Advanced": "Lớp nâng cao",
+            "Math": "Lớp ôn thi học sinh giỏi",
+            "VIP": "Lớp ôn thi vào 10, thi đại học"
+        };
+
+        // Chuyển đổi dữ liệu
+        const formattedResults = results.map(classItem => ({
+            ...classItem,
+            type: typeMapping[classItem.type] || classItem.type // Nếu không có trong map thì giữ nguyên
+        }));
+
+        res.json(formattedResults);
     });
 });
+
 
 router.get("/classes/:userId", (req, res) => {
     const { userId } = req.params;
@@ -78,48 +109,68 @@ router.get("/classes/:userId", (req, res) => {
         if (err) return res.status(500).json({ error: "Lỗi server khi truy vấn dữ liệu" });
         res.json(results);
     });
-});
+});// 📌 API: Đăng ký lớp học và cập nhật số lượng học viên trong lớp
 // 📌 API: Đăng ký lớp học và cập nhật số lượng học viên trong lớp
 router.post("/register-group", (req, res) => {
     const { userId, classId } = req.body;
 
-    // ✅ Kiểm tra dữ liệu từ frontend có hợp lệ không?
+    // ✅ Kiểm tra dữ liệu đầu vào
     if (!userId || !classId) {
         console.error("❌ Thiếu userId hoặc classId!");
         return res.status(400).json({ error: "Thiếu userId hoặc classId!" });
     }
 
-    // Truy vấn kiểm tra lớp học, học phí, số lượng học viên...
-    const checkQuery = `
-        SELECT COUNT(*) AS current_student, 
-               (SELECT max_student FROM class WHERE id = ?) AS max_student,
-               (SELECT fee_amount FROM class WHERE id = ?) AS fee_amount
-        FROM registrations WHERE class_id = ?
+    // 🔍 Truy vấn để lấy thông tin lớp học & môn học
+    const checkClassQuery = `
+        SELECT subject, max_student, fee_amount, current_student 
+        FROM class 
+        WHERE id = ?
     `;
 
-    db.query(checkQuery, [classId, classId, classId], (err, results) => {
+    db.query(checkClassQuery, [classId], (err, classResults) => {
         if (err) {
-            console.error("❌ Lỗi kiểm tra số lượng học viên: ", err);
-            return res.status(500).json({ error: "Lỗi kiểm tra số lượng học viên", details: err.message });
+            console.error("❌ Lỗi truy vấn lớp học: ", err);
+            return res.status(500).json({ error: "Lỗi truy vấn lớp học", details: err.message });
+        }
+        if (classResults.length === 0) {
+            return res.status(404).json({ error: "Lớp học không tồn tại!" });
         }
 
-        const { current_student, max_student, fee_amount } = results[0];
-        // Kiểm tra nếu lớp đã đầy
+        const { subject, max_student, fee_amount, current_student } = classResults[0];
+        console.log(`📌 DEBUG: Lớp ${classId} - current: ${current_student}, max: ${max_student}`);
+
+        // 🛑 Kiểm tra nếu lớp đã đầy
         if (current_student >= max_student) {
             return res.status(400).json({ error: "Lớp đã đầy, không thể đăng ký!" });
         }
 
-        const checkDuplicateQuery = "SELECT * FROM registrations WHERE user_id = ? AND class_id = ?";
-        db.query(checkDuplicateQuery, [userId, classId], (err, results) => {
+        // 🔍 Kiểm tra số môn học mà học viên đã đăng ký
+        const checkSubjectsQuery = `
+            SELECT DISTINCT c.subject 
+            FROM registrations r
+            JOIN class c ON r.class_id = c.id
+            WHERE r.user_id = ?
+        `;
+
+        db.query(checkSubjectsQuery, [userId], (err, subjectResults) => {
             if (err) {
-                console.error("❌ Lỗi kiểm tra đăng ký: ", err);
-                return res.status(500).json({ error: "Lỗi kiểm tra đăng ký", details: err.message });
-            }
-            if (results.length > 0) {
-                return res.status(400).json({ error: "Bạn đã đăng ký lớp này rồi!" });
+                console.error("❌ Lỗi kiểm tra môn học đã đăng ký: ", err);
+                return res.status(500).json({ error: "Lỗi kiểm tra môn học đã đăng ký", details: err.message });
             }
 
-            // ✅ Nếu hợp lệ, thêm vào bảng đăng ký
+            const registeredSubjects = subjectResults.map(row => row.subject);
+
+            // 🛑 Kiểm tra số môn học đã đăng ký (tối đa 3 môn)
+            if (registeredSubjects.length >= 3) {
+                return res.status(400).json({ error: "Bạn chỉ có thể đăng ký tối đa 3 môn học!" });
+            }
+
+            // 🛑 Kiểm tra trùng môn
+            if (registeredSubjects.includes(subject)) {
+                return res.status(400).json({ error: `Bạn đã đăng ký môn ${subject} rồi!` });
+            }
+
+            // ✅ Nếu hợp lệ, tiến hành đăng ký lớp học
             const insertQuery = "INSERT INTO registrations (user_id, class_id) VALUES (?, ?)";
             db.query(insertQuery, [userId, classId], (err) => {
                 if (err) {
@@ -127,11 +178,11 @@ router.post("/register-group", (req, res) => {
                     return res.status(500).json({ error: "Lỗi đăng ký lớp học!", details: err.message });
                 }
 
-                // Cập nhật học phí
+                // 💰 Cập nhật học phí
                 const updateFeeQuery = `
                     INSERT INTO student_fee (student_id, class_id, amount, start_at, end_at) 
                     VALUES (?, ?, ?, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 1 MONTH))
-                    ON DUPLICATE KEY UPDATE amount = amount + ?, fee = fee;
+                    ON DUPLICATE KEY UPDATE amount = amount + ?;
                 `;
 
                 db.query(updateFeeQuery, [userId, classId, fee_amount, fee_amount], (err) => {
@@ -140,7 +191,7 @@ router.post("/register-group", (req, res) => {
                         return res.status(500).json({ error: "Lỗi cập nhật học phí", details: err.message });
                     }
 
-                    // Cập nhật số lượng học viên trong lớp
+                    // 👥 Cập nhật số lượng học viên trong lớp
                     const updateClassQuery = "UPDATE class SET current_student = current_student + 1 WHERE id = ?";
                     db.query(updateClassQuery, [classId], (err) => {
                         if (err) {
@@ -162,17 +213,25 @@ router.get("/registered-classes/:userId", (req, res) => {
     const userId = req.params.userId;
 
     const sql = `
-   SELECT c.id, c.name, c.subject, c.type, c.grade, c.max_student,
-       IFNULL(
-           GROUP_CONCAT(DISTINCT CONCAT(s.schedule_date, ': ', p.start_at, ' - ', p.end_at) SEPARATOR '; '),
-           'Chưa có lịch'
-       ) AS schedule
-FROM registrations r
-JOIN class c ON r.class_id = c.id
-LEFT JOIN schedule s ON c.id = s.class_id
-LEFT JOIN period_time p ON s.period_time_id = p.id
-WHERE r.user_id = ?
-GROUP BY c.id;
+  SELECT 
+            c.id, 
+            c.name, 
+            c.subject, 
+            c.type, 
+            c.grade, 
+            c.max_student,
+            (SELECT COUNT(*) FROM registrations WHERE class_id = c.id) AS current_student,
+            GROUP_CONCAT(
+                DISTINCT CONCAT(pt.date_of_week, ' (', pt.start_at, ' - ', pt.end_at, ')') 
+                ORDER BY FIELD(pt.date_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')
+                SEPARATOR ', '
+            ) AS schedule
+        FROM class c
+        JOIN registrations r ON c.id = r.class_id
+        JOIN period_time_class ptc ON c.id = ptc.class_id
+        JOIN period_time pt ON ptc.period_time_id = pt.id
+        WHERE r.user_id = ?
+        GROUP BY c.id, c.name, c.subject, c.type, c.grade, c.max_student;
 
     `;
 
@@ -248,31 +307,23 @@ router.delete("/unregister-group/:studentId/:classId", (req, res) => {
 
 
 
-
-// API: Lấy danh sách học phí của sinh viên
+// API: Lấy danh sách học phí theo số nhóm (class)
 router.get("/fees/:studentId", (req, res) => {
     const { studentId } = req.params;
 
     const query = `
-       SELECT 
-    sf.student_id, 
-    COUNT(DISTINCT sf.class_id) AS subject_count,  
-    CASE 
-        WHEN COUNT(DISTINCT sf.class_id) = 1 THEN 800000
-        WHEN COUNT(DISTINCT sf.class_id) = 2 THEN 1500000
-        WHEN COUNT(DISTINCT sf.class_id) >= 3 THEN 2000000
-        ELSE 0
-    END AS total_fee,
-    (SELECT COALESCE(SUM(amount), 0) FROM student_payments WHERE student_id = sf.student_id) AS already_pay,
-    (CASE 
-        WHEN COUNT(DISTINCT sf.class_id) = 1 THEN 800000
-        WHEN COUNT(DISTINCT sf.class_id) = 2 THEN 1500000
-        WHEN COUNT(DISTINCT sf.class_id) >= 3 THEN 2000000
-        ELSE 0
-    END - (SELECT COALESCE(SUM(amount), 0) FROM student_payments WHERE student_id = sf.student_id)) AS remaining
-FROM student_fee sf
-WHERE sf.student_id = ?   -- 💡 Chỉ lấy dữ liệu của học viên có id cụ thể
-GROUP BY sf.student_id;
+      SELECT 
+    r.user_id AS student_id, 
+    COUNT(DISTINCT c.name) AS group_count,  
+    COALESCE(COUNT(DISTINCT c.name) * 500000, 0) AS total_fee,  
+    (SELECT COALESCE(SUM(amount), 0) FROM student_payments WHERE student_id = r.user_id) AS already_pay,
+    (COALESCE(COUNT(DISTINCT c.name) * 500000, 0) - 
+        (SELECT COALESCE(SUM(amount), 0) FROM student_payments WHERE student_id = r.user_id)
+    ) AS remaining
+FROM registrations r
+LEFT JOIN class c ON r.class_id = c.id
+WHERE r.user_id = ?  
+GROUP BY r.user_id;
 
     `;
 
@@ -284,6 +335,7 @@ GROUP BY sf.student_id;
         res.json(results);
     });
 });
+
 router.get("/grades/:student_id/:class_id", (req, res) => {
     const { student_id, class_id } = req.params;
 

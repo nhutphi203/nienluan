@@ -11,6 +11,42 @@ const db = mysql.createConnection({
     database: process.env.DB_NAME || "tutoring_center",
     port: process.env.DB_PORT || 3306
 });
+// Đổi đường dẫn API thành /manager/classes
+router.get("/manager/classes", async (req, res) => {
+    try {
+        const [classes] = await db.query("SELECT * FROM class");
+        res.json(classes);
+    } catch (err) {
+        res.status(500).json({ error: "Lỗi lấy danh sách lớp!" });
+    }
+});
+
+router.post("/manager/classes", async (req, res) => {
+    try {
+        const { name, subject, type, grade, max_student } = req.body;
+        await db.query("INSERT INTO class (name, subject, type, grade, max_student) VALUES (?, ?, ?, ?, ?)",
+            [name, subject, type, grade, max_student]);
+
+        res.status(201).json({ message: "Lớp học đã được tạo!" });
+    } catch (err) {
+        res.status(500).json({ error: "Lỗi tạo lớp học!" });
+    }
+});
+
+router.post("/manager/classes/:id/periods", async (req, res) => {
+    try {
+        const { periods } = req.body;
+        const classId = req.params.id;
+
+        for (let periodId of periods) {
+            await db.query("INSERT INTO period_time_class (period_time_id, class_id) VALUES (?, ?)", [periodId, classId]);
+        }
+
+        res.json({ message: "Đã cập nhật lịch học!" });
+    } catch (err) {
+        res.status(500).json({ error: "Lỗi cập nhật lịch học!" });
+    }
+});
 // API: Lấy lịch dạy của giáo viên
 router.get("/schedule/:teacher_id", (req, res) => {
     const teacherId = req.params.teacher_id; // Lấy teacher_id từ URL

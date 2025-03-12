@@ -12,6 +12,92 @@ const db = mysql.createPool({
     connectionLimit: 10,
     queueLimit: 0
 });
+router.get("/group-options", async (req, res) => {
+    try {
+        const [subjects] = await db.query("SELECT DISTINCT subject FROM class");
+        console.log("Subjects:", subjects);  // Kiểm tra dữ liệu
+        const [types] = await db.query("SELECT DISTINCT type FROM class");
+        console.log("Types:", types);
+        const [grades] = await db.query(`
+            SELECT DISTINCT grade.grade 
+            FROM class
+            JOIN grade ON class.grade = grade.id
+        `);
+        const [max_students] = await db.query("SELECT DISTINCT max_student FROM class");
+        console.log("Max Students:", max_students);
+        // Ánh xạ dữ liệu từ DB sang loại mong muốn
+        const typeMapping = {
+            NORMAL: "Lớp cơ bản",
+            Math: "Lớp ôn thi vào 10, thi đại học",
+            VIP: "Lớp ôn thi học sinh giỏi",
+            Advanced: "Lớp nâng cao",
+        };
+
+        const mappedTypes = types
+            .map(row => typeMapping[row.type] || "Khác") // Nếu không có trong mapping, gán "Khác"
+            .filter((value, index, self) => self.indexOf(value) === index); // Xóa trùng lặp
+
+        res.json({
+            subjects: subjects.map(row => row.subject).filter(Boolean),
+            types: mappedTypes,
+            grades: grades.map(row => row.grade).filter(Boolean),
+            max_students: max_students.map(row => row.max_student).filter(Boolean),
+        });
+    } catch (err) {
+        console.error("Lỗi truy vấn dữ liệu:", err);
+        res.status(500).json({ message: "Lỗi lấy dữ liệu nhóm học" });
+    }
+});
+
+
+router.delete('/group/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await db.query('DELETE FROM class WHERE id = ?', [id]);
+        if (result.affectedRows > 0) {
+            res.json({ message: 'Xóa nhóm học thành công' });
+        } else {
+            res.status(404).json({ error: 'Nhóm học không tồn tại' });
+        }
+    } catch (error) {
+        console.error('Lỗi xóa nhóm:', error);
+        res.status(500).json({ error: 'Lỗi server' });
+    }
+});
+
+
+router.post("/group", async (req, res) => {
+    try {
+        const { name, subject, type, grade, max_student } = req.body;
+
+        if (!name || !subject || !type || !grade || !max_student) {
+            return res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin nhóm học!" });
+        }
+
+        // Kiểm tra giá trị grade truyền vào
+        console.log("Học viên tối đa nhận được từ request:", max_student);
+
+        // Kiểm tra nếu grade là số hoặc chuỗi
+        const [gradeRows] = await db.execute("SELECT id FROM grade WHERE grade = ?", [grade]);
+
+        console.log("Kết quả truy vấn grade:", gradeRows);
+
+        if (gradeRows.length === 0) {
+            return res.status(400).json({ message: `Giá trị grade '${grade}' không tồn tại trong bảng grade!` });
+        }
+
+        const gradeId = gradeRows[0].id; // Lấy ID hợp lệ của grade
+
+        // Thêm vào bảng class
+        const sql = `INSERT INTO class (name, subject, type, grade, max_student) VALUES (?, ?, ?, ?, ?)`;
+        const [result] = await db.execute(sql, [name, subject, type, gradeId, max_student]);
+
+        res.status(201).json({ message: "Nhóm học đã được tạo thành công!", id: result.insertId });
+    } catch (err) {
+        console.error("Lỗi khi tạo nhóm học:", err);
+        res.status(500).json({ message: "Lỗi server, không thể tạo nhóm học!" });
+    }
+});
 
 // API lấy danh sách lớp
 router.get("/classes", async (req, res) => {
@@ -23,28 +109,40 @@ router.get("/classes", async (req, res) => {
     }
 });
 
-// API thêm lớp mới
-router.post("/classes", async (req, res) => {
+router.post("/group", async (req, res) => {
     try {
-        const { name, subject, type, grade, max_student, fee_amount, current_student } = req.body;
+        const { name, subject, type, grade, max_student } = req.body;
 
-        if (!name || !subject || !type || !grade || !max_student || !fee_amount || current_student === undefined) {
-            return res.status(400).json({ error: "Thiếu thông tin lớp học" });
+        if (!name || !subject || !type || !grade || !max_student) {
+            return res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin nhóm học!" });
         }
 
-        const sql = `
-            INSERT INTO class (name, subject, type, grade, max_student, fee_amount, current_student) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        `;
-        const values = [name, subject, type, grade, max_student, fee_amount, current_student];
+        // Kiểm tra giá trị grade truyền vào
+        console.log("Grade nhận được từ request:", grade);
 
-        const [result] = await db.execute(sql, values);
+        // Kiểm tra nếu grade là số hoặc chuỗi
+        const [gradeRows] = await db.execute("SELECT id FROM grade WHERE id = ?", [grade]);
 
-        res.status(201).json({ message: "Thêm lớp học thành công", id: result.insertId });
-    } catch (error) {
-        res.status(500).json({ error: "Lỗi khi thêm lớp học", details: error.message });
+        console.log("Kết quả truy vấn grade:", gradeRows);
+
+        if (gradeRows.length === 0) {
+            return res.status(400).json({ message: `Giá trị grade '${grade}' không tồn tại trong bảng grade!` });
+        }
+
+        const gradeId = gradeRows[0].id; // Lấy ID hợp lệ của grade
+
+        // Thêm vào bảng class
+        const sql = `INSERT INTO class (name, subject, type, grade, max_student) VALUES (?, ?, ?, ?, ?)`;
+        const [result] = await db.execute(sql, [name, subject, type, gradeId, max_student]);
+
+        res.status(201).json({ message: "Nhóm học đã được tạo thành công!", id: result.insertId });
+    } catch (err) {
+        console.error("Lỗi khi tạo nhóm học:", err);
+        res.status(500).json({ message: "Lỗi server, không thể tạo nhóm học!" });
     }
 });
+
+
 
 // API xóa lớp học
 router.delete("/classes/:id", async (req, res) => {

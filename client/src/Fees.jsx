@@ -40,7 +40,7 @@ const Fees = ({ user }) => {
                 <table className="fees-table">
                     <thead>
                         <tr>
-                            <th>📚 Số môn đăng ký</th>
+                            <th>📚 Số nhóm đăng ký</th> {/* 🔥 Đổi "Số môn đăng ký" → "Số nhóm đăng ký" */}
                             <th>💰 Tổng học phí</th>
                             <th>📅 Ngày đóng gần nhất</th>
                             <th>💳 Đã thanh toán</th>
@@ -49,17 +49,17 @@ const Fees = ({ user }) => {
                     </thead>
                     <tbody>
                         {fees.map((fee) => (
-                            <tr key={fee.id}>
-                                <td>{fee.subject_count}</td>
-                                <td>{fee.total_fee ? fee.total_fee.toLocaleString() : "N/A"} VNĐ</td> {/* 🔥 Sửa lại từ `fee.amount` → `fee.total_fee` */}
+                            <tr key={fee.student_id}>  {/* 🔥 Sửa `fee.id` → `fee.student_id` */}
+                                <td>{fee.group_count}</td>  {/* 🔥 Đổi `subject_count` → `group_count` */}
+                                <td>{fee.total_fee ? fee.total_fee.toLocaleString() : "N/A"} VNĐ</td>
                                 <td>{fee.latest_pay_at ? new Date(fee.latest_pay_at).toLocaleDateString() : "Chưa đóng"}</td>
                                 <td>{(fee.already_pay || 0).toLocaleString()} VNĐ</td>
                                 <td>{(fee.remaining || 0).toLocaleString()} VNĐ</td>
                             </tr>
                         ))}
                     </tbody>
-
                 </table>
+
             )}
         </div>
     );
