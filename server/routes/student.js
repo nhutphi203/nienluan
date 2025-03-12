@@ -162,14 +162,18 @@ router.get("/registered-classes/:userId", (req, res) => {
     const userId = req.params.userId;
 
     const sql = `
-        SELECT c.id, c.name, c.subject, c.type, c.grade, c.max_student,
-               GROUP_CONCAT(DISTINCT CONCAT(s.schedule_date, ': ', p.start_at, ' - ', p.end_at) SEPARATOR '; ') AS schedule
-        FROM registrations r
-        JOIN class c ON r.class_id = c.id
-        JOIN schedule s ON c.id = s.class_id
-        JOIN period_time p ON s.period_time_id = p.id
-        WHERE r.user_id = ?
-        GROUP BY c.id;
+   SELECT c.id, c.name, c.subject, c.type, c.grade, c.max_student,
+       IFNULL(
+           GROUP_CONCAT(DISTINCT CONCAT(s.schedule_date, ': ', p.start_at, ' - ', p.end_at) SEPARATOR '; '),
+           'Chưa có lịch'
+       ) AS schedule
+FROM registrations r
+JOIN class c ON r.class_id = c.id
+LEFT JOIN schedule s ON c.id = s.class_id
+LEFT JOIN period_time p ON s.period_time_id = p.id
+WHERE r.user_id = ?
+GROUP BY c.id;
+
     `;
 
     db.query(sql, [userId], (err, results) => {
