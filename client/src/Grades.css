@@ -1,0 +1,65 @@
+.grades-container {
+    max-width: 800px;
+    margin: auto;
+    padding: 20px;
+    text-align: center;
+}
+h2 {
+    font-size: 20px;
+    margin-bottom: 12px;
+    margin-top: 20px;  /* Tạo khoảng cách giữa các tiêu đề */
+}
+
+.grades-section {
+    margin-top: 20px;  /* Khoảng cách giữa bảng lớp và bảng điểm */
+}
+
+
+.class-table, .grades-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 14px;
+}
+
+.class-table th, .class-table td,
+.grades-table th, .grades-table td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: center;
+    vertical-align: middle;  /* Căn chữ theo chiều dọc */
+}
+
+.class-table thead, .class-table tbody,
+.grades-table thead, .grades-table tbody {
+    display: block;
+}
+
+.class-table tbody, .grades-table tbody {
+    max-height: 220px;  /* Giới hạn chiều cao bảng */
+    overflow-y: auto;
+}
+
+.class-table thead tr, .class-table tbody tr,
+.grades-table thead tr, .grades-table tbody tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+}
+
+.class-table tr:hover {
+    background-color: #f5f5f5;
+    cursor: pointer;
+}
+
+.class-table .selected {
+    background-color: #d1e7fd;
+    font-weight: bold;
+    border-left: 5px solid blue;
+}
+
+p {
+    font-size: 14px;
+    color: #444;
+    margin-top: 10px;
+}

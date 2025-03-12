@@ -1,0 +1,50 @@
+/* StudentSchedule.css */
+.schedule-container {
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 20px;
+    background: #ffffff;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+}
+
+.schedule-title {
+    text-align: center;
+    font-size: 24px;
+    font-weight: bold;
+    color: #007bff;
+    margin-bottom: 20px;
+}
+
+.schedule-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #f9f9f9;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.schedule-table th {
+    background: #007bff;
+    color: white;
+    padding: 12px;
+    text-align: left;
+}
+
+.schedule-table td {
+    padding: 12px;
+    border-bottom: 1px solid #ddd;
+    color: #333;
+}
+
+.schedule-table tr:hover {
+    background: #e3f2fd;
+    transition: 0.3s ease-in-out;
+}
+
+.no-schedule {
+    text-align: center;
+    color: #888;
+    font-size: 16px;
+    margin-top: 10px;
+}

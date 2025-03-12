@@ -1,0 +1,58 @@
+.teacher-container {
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 20px;
+    background: #fff;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+}
+
+.teacher-title {
+    text-align: center;
+    font-size: 22px;
+    font-weight: bold;
+    margin-bottom: 15px;
+}
+
+.teacher-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.teacher-table th, 
+.teacher-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+}
+
+.teacher-table th {
+    background: #f4f4f4;
+    font-weight: bold;
+}
+
+.teacher-table tr:hover {
+    background: #f9f9f9;
+}
+
+.teacher-input {
+    width: 60px;
+    text-align: center;
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+.teacher-btn {
+    background: #007bff;
+    color: white;
+    padding: 5px 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.teacher-btn:hover {
+    background: #0056b3;
+}

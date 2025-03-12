@@ -1,0 +1,92 @@
+/* Đặt nền màu xám đậm để tạo độ tương phản tốt hơn */
+.center-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #3a3a3a; /* Xám đậm */
+    padding: 20px;
+}
+
+/* Khung chứa nội dung với nền trắng và bo góc */
+.container {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    width: 400px;
+    text-align: center;
+}
+
+/* Kiểu chữ mặc định cho toàn bộ input để đảm bảo dễ đọc */
+.input-group input {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    font-size: 16px;
+    color: #333; /* Chữ đậm hơn */
+   
+}
+
+
+
+/* Đảm bảo placeholder dễ đọc */
+.input-group input::placeholder {
+    color: #666;
+    font-style: italic;
+}
+
+/* Nút bấm có màu sắc nổi bật */
+button {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    color: white;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+button:hover {
+    background: #0056b3;
+}
+
+/* Danh sách nhóm học với màu sắc rõ ràng */
+ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+li {
+    background: #ffffff;
+    padding: 12px;
+    margin-bottom: 8px;
+    border-radius: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Nút xóa có màu đỏ để cảnh báo */
+.delete-btn {
+    background: #ff4d4d;
+    padding: 8px 12px;
+    border: none;
+    color: white;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.delete-btn:hover {
+    background: #cc0000;
+}
+
+/* Thông báo tin nhắn */
+.message {
+    color: #28a745;
+    font-weight: bold;
+    margin-bottom: 10px;
+}

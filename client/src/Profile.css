@@ -1,0 +1,148 @@
+/* Profile.css */
+
+/* Container cho profile */
+.profile-container {
+    padding: 20px;
+    max-width: 600px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.profile-card {
+    border: 1px solid #ccc;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+}
+
+.profile-card p {
+    font-size: 16px;
+    margin: 10px 0;
+}
+
+/* Nút đổi mật khẩu */
+.change-password-btn {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.change-password-btn:hover {
+    background-color: #45a049;
+}
+
+/* Modal */
+.modal-header {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px;
+    border-radius: 5px 5px 0 0;
+}
+/* Chân modal - Nút xác nhận và đóng */
+.modal-footer {
+    display: flex; /* Sử dụng flexbox để căn chỉnh các nút */
+    justify-content: space-between; /* Căn đều khoảng cách giữa các nút */
+    padding: 10px;
+    width: 100%; /* Đảm bảo chiều rộng chiếm toàn bộ modal */
+}
+
+.modal-footer button {
+    padding: 10px 20px; /* Điều chỉnh padding cho nút */
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+
+.modal-footer .confirm-btn {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.modal-footer .confirm-btn:hover {
+    background-color: #45a049;
+}
+
+
+.popup-header h4 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.modal-body input {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 16px;
+}
+
+.modal-body button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.modal-body button:hover {
+    background-color: #45a049;
+}
+
+.modal-header  {
+    color: #45a049;
+}
+
+/* Nút quay lại */
+.back-btn {
+    background-color: #f1f1f1;
+    color: #333;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    margin-top: 20px;
+}
+
+.back-btn:hover {
+    background-color: #ddd;
+}
+/* Hiển thị khi modal mở */
+/* Modal header */
+/* Modal header */
+.modal-header {
+    background-color: white; /* Màu nền xanh */
+    color:  #4CAF50;
+    padding: 15px; /* Thêm padding cho phần header */
+    border-radius: 5px 5px 0 0;
+    display: flex;
+    justify-content: center; /* Căn giữa theo chiều ngang */
+    align-items: center; /* Căn giữa theo chiều dọc */
+    width: 100%;
+}
+
+
+/* Tiêu đề của popup */
+.popup-header h4 {
+    margin: 0;
+    font-size: 22px; /* Tăng kích thước chữ để chữ phình ra */
+    text-align: center; /* Căn giữa chữ */
+    width: 100%; /* Đảm bảo phần tử h4 chiếm toàn bộ chiều ngang */
+    color: #4CAF50; /* Màu xanh giống với màu nút */
+    font-weight: bold; /* Để chữ đậm hơn */
+    text-transform: uppercase; /* Chữ hoa */
+    letter-spacing: 1px; /* Khoảng cách giữa các chữ */
+}
+
