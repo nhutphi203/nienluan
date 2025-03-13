@@ -6,6 +6,9 @@ function ManageGroups() {
     const [types, setTypes] = useState([]);
     const [grades, setGrades] = useState([]);
     const [maxStudents, setMaxStudents] = useState([]);
+    const [schedule, setSchedule] = useState([]);
+    const [isOpen, setIsOpen] = useState(false);
+
     const [editingClass, setEditingClass] = useState(null); // Lưu thông tin lớp đang chỉnh sửa
     const [newGroup, setNewGroup] = useState({
         name: "",
@@ -13,7 +16,20 @@ function ManageGroups() {
         type: "",
         grade: "",
         max_student: "",
+        schedule: [],
     });
+    const [groupOptions, setGroupOptions] = useState({
+        subjects: [],
+        types: [],
+        grades: [],
+        max_students: [],
+        schedules: []
+    });
+    useEffect(() => {
+        console.log("📌 Cập nhật groupOptions.schedules:", schedule);
+    }, [schedule]);
+
+
     // Lấy dữ liệu từ API
     useEffect(() => {
         fetch("http://localhost:5000/student/available-classes")
@@ -21,7 +37,9 @@ function ManageGroups() {
             .then((data) => {
                 console.log("📌 Dữ liệu API trước khi xử lý:", data);
                 setGroups(groupByClass(data))
-                console.log("📌 Dữ liệu sau khi groupByClass:", groupByClass);
+                console.log("groupOptions.schedules:", groupOptions?.schedules);
+
+                console.log("📌 Dữ liệu sau khi groupByClass:", groupByClass(data));
             })
 
             .catch((err) => console.error("Lỗi khi lấy danh sách lớp:", err));
@@ -29,10 +47,13 @@ function ManageGroups() {
         fetch("http://localhost:5000/manager/group-options") // API trả về các danh mục
             .then((res) => res.json())
             .then((data) => {
-                setSubjects(data.subjects);
-                setTypes(data.types);
-                setGrades(data.grades);
-                setMaxStudents(data.max_students);
+                console.log("📌 Dữ liệu group-options:", data);
+
+                setSubjects(data.subjects || []);
+                setTypes(data.types || []);
+                setGrades(data.grades || []);
+                setMaxStudents(data.max_students || []);
+                setGroupOptions(prev => ({ ...prev, schedules: data.schedules || [] }));
             })
             .catch((err) => console.error("Lỗi khi lấy dữ liệu danh mục:", err));
     }, []);
@@ -40,34 +61,95 @@ function ManageGroups() {
         setEditingClass(cls);
     };
 
+
+    // Hàm này dùng để gọi lại API lấy danh sách lớp
+    const fetchGroups = () => {
+        fetch("http://localhost:5000/student/available-classes")
+            .then((res) => res.json())
+            .then((data) => {
+                setGroups(groupByClass(data));
+            })
+            .catch((err) => console.error("Lỗi khi lấy danh sách lớp:", err));
+    };
+
     const handleDelete = (id) => {
         if (window.confirm("Bạn có chắc muốn xóa lớp này?")) {
-            fetch(`http://localhost:5000/manager/group/${id}`, {
-                method: "DELETE",
-            })
-                .then((res) => res.json())
-                .then((data) => {
-                    alert(data.message);
-                    setGroups(groups.filter((g) => g.id !== id));
+            fetch(`http://localhost:5000/manager/group/${id}`, { method: "DELETE" })
+                .then(async (res) => {
+                    console.log("Phản hồi HTTP:", res); // Kiểm tra phản hồi từ server
+
+                    // Kiểm tra nếu phản hồi không phải JSON
+                    const text = await res.text();
+                    console.log("Phản hồi dạng text:", text);
+
+                    try {
+                        const jsonData = JSON.parse(text);
+                        console.log("Phản hồi dạng JSON:", jsonData);
+
+                        if (!res.ok) {
+                            throw new Error(jsonData.error || "Lỗi khi xóa nhóm");
+                        }
+
+                        alert(jsonData.message || "Xóa nhóm thành công");
+                        setGroups(prevGroups => prevGroups.filter((g) => g.id !== id));
+                    } catch (error) {
+                        throw new Error("Phản hồi không phải JSON hợp lệ");
+                    }
                 })
-                .catch((err) => console.error("Lỗi khi xóa nhóm học:", err));
+                .catch((err) => {
+                    console.error("❌ Lỗi khi xóa nhóm học:", err);
+                    alert("Lỗi khi xóa nhóm học: " + err.message);
+                });
         }
     };
 
     const handleCreateGroup = () => {
+        console.log("📌 Danh sách khung giờ khi gửi:", newGroup.schedule);
+
+        if (!newGroup.schedule || newGroup.schedule.length === 0) {
+            alert("Vui lòng chọn ít nhất một khung giờ học!");
+            return;
+        }
+
         fetch("http://localhost:5000/manager/group", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(newGroup),
+            body: JSON.stringify({
+                ...newGroup,
+                period_time_ids: newGroup.schedule, // Đặt period_time_ids từ schedule
+            }),
         })
             .then((res) => res.json())
             .then((data) => {
                 alert(data.message);
-                setGroups([...groups, { ...newGroup, id: data.id }]);
-                setNewGroup({ name: "", subject: "", type: "", grade: "", max_student: "" });
+                fetch("http://localhost:5000/student/available-classes") // Cập nhật danh sách nhóm học
+                    .then((res) => res.json())
+                    .then((updatedData) => {
+                        console.log("📌 Danh sách mới sau khi thêm:", updatedData);
+                        setGroups(groupByClass(updatedData));
+                    });
+
+                // Reset dữ liệu nhóm mới
+                setNewGroup({ name: "", subject: "", type: "", grade: "", max_student: "", schedule: [] });
             })
             .catch((err) => console.error("Lỗi khi tạo nhóm học:", err));
     };
+    const handleScheduleChange = (scheduleId) => {
+        setNewGroup((prevGroup) => {
+            const isSelected = prevGroup.schedule.includes(scheduleId);
+            const updatedSchedule = isSelected
+                ? prevGroup.schedule.filter(id => id !== scheduleId)  // Bỏ chọn nếu đã chọn trước đó
+                : [...prevGroup.schedule, scheduleId];  // Thêm nếu chưa chọn
+
+            console.log("📌 Danh sách khung giờ đã chọn:", updatedSchedule);
+
+            return { ...prevGroup, schedule: updatedSchedule };
+        });
+    };
+
+
+
+
 
     // Xử lý nhóm dữ liệu lớp học
     const groupByClass = (data) => {
@@ -84,13 +166,15 @@ function ManageGroups() {
             current_student: item.current_student || 0,
             remaining_students: item.max_student - (item.current_student || 0),
             schedule: item.schedule
-                ? item.schedule.split(", ").map((sch) => {
+                ? String(item.schedule).split(", ").map((sch) => {
                     const match = sch.match(/(\w+) \((\d{2}:\d{2}:\d{2}) - (\d{2}:\d{2}:\d{2})\)/);
                     return match ? { date_of_week: match[1], start_at: match[2], end_at: match[3] } : null;
                 }).filter(Boolean)
                 : [],
+
         }));
     };
+
 
     return (
         <div className="max-w-4xl mx-auto p-6 bg-white rounded-xl shadow-lg">
@@ -160,7 +244,26 @@ function ManageGroups() {
                             <option key={num || index} value={num}>{num}</option>
                         ))}
                 </select>
+                <div className="border p-3 rounded-md w-full bg-white">
+                    <p className="font-semibold mb-2">Chọn lịch học:</p>
 
+                    <div className="grid grid-cols-2 gap-2">
+                        {groupOptions.schedules.map((schedule) => (
+                            <label
+                                key={schedule.id}
+                                className="flex items-center space-x-2 border p-2 rounded-md cursor-pointer hover:bg-gray-100"
+                            >
+                                <input
+                                    type="checkbox"
+                                    value={schedule.id}
+                                    checked={newGroup.schedule.includes(schedule.id)}
+                                    onChange={() => handleScheduleChange(schedule.id)}
+                                />
+                                <span>{schedule.date}: {schedule.start} - {schedule.end}</span>
+                            </label>
+                        ))}
+                    </div>
+                </div>
 
                 <button
                     onClick={handleCreateGroup}
@@ -202,15 +305,22 @@ function ManageGroups() {
                                         <ul className="list-disc pl-4">
                                             {Array.isArray(cls.schedule) && cls.schedule.length > 0 ? (
                                                 cls.schedule.map((sch, index) => (
-                                                    <li key={index}>
-                                                        {sch.date_of_week}: {sch.start_at} - {sch.end_at}
-                                                    </li>
+                                                    sch ? ( // Kiểm tra sch có tồn tại không
+                                                        <li key={index}>
+                                                            {sch.date_of_week ? sch.date_of_week : "Chưa có ngày"}:
+                                                            {sch.start_at ? sch.start_at : "Chưa có giờ bắt đầu"} -
+                                                            {sch.end_at ? sch.end_at : "Chưa có giờ kết thúc"}
+                                                        </li>
+                                                    ) : (
+                                                        <li key={index} className="text-gray-500">Dữ liệu không hợp lệ</li>
+                                                    )
                                                 ))
                                             ) : (
                                                 <span className="text-gray-500">Chưa có lịch học</span>
                                             )}
                                         </ul>
                                     </td>
+
                                     <td className="border p-2 text-center">
                                         <button
                                             className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 mr-2"

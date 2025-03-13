@@ -15,16 +15,23 @@ const db = mysql.createPool({
 router.get("/group-options", async (req, res) => {
     try {
         const [subjects] = await db.query("SELECT DISTINCT subject FROM class");
-        console.log("Subjects:", subjects);  // Kiểm tra dữ liệu
         const [types] = await db.query("SELECT DISTINCT type FROM class");
-        console.log("Types:", types);
-        const [grades] = await db.query(`
-            SELECT DISTINCT grade.grade 
-            FROM class
-            JOIN grade ON class.grade = grade.id
-        `);
+        const [grades] = await db.query("SELECT DISTINCT grade.grade FROM grade");
         const [max_students] = await db.query("SELECT DISTINCT max_student FROM class");
-        console.log("Max Students:", max_students);
+
+        // 🔥 Lấy lịch học từ period_time thông qua period_time_class
+        const [schedules] = await db.query(`
+           SELECT pt.id, pt.name, pt.date_of_week, pt.start_at, pt.end_at
+            FROM period_time pt
+        `);
+
+        // Định dạng lại lịch học
+        const formattedSchedules = schedules.map(row => ({
+            id: row.id,
+            name: row.name,
+            time: `${row.date_of_week} - ${row.start_at} đến ${row.end_at}`,
+        }));
+
         // Ánh xạ dữ liệu từ DB sang loại mong muốn
         const typeMapping = {
             NORMAL: "Lớp cơ bản",
@@ -42,6 +49,13 @@ router.get("/group-options", async (req, res) => {
             types: mappedTypes,
             grades: grades.map(row => row.grade).filter(Boolean),
             max_students: max_students.map(row => row.max_student).filter(Boolean),
+            schedules: schedules.map(row => ({
+                id: row.id,
+                name: row.name,
+                date: row.date_of_week,
+                start: row.start_at,
+                end: row.end_at
+            }))
         });
     } catch (err) {
         console.error("Lỗi truy vấn dữ liệu:", err);
@@ -52,52 +66,78 @@ router.get("/group-options", async (req, res) => {
 
 router.delete('/group/:id', async (req, res) => {
     const { id } = req.params;
+    const connection = await db.getConnection();
     try {
-        const result = await db.query('DELETE FROM class WHERE id = ?', [id]);
+        await connection.beginTransaction(); // Bắt đầu transaction
+
+        // Xóa dữ liệu thanh toán học phí của sinh viên trong nhóm
+        await connection.query('DELETE FROM student_pay_fee WHERE student_id IN (SELECT id FROM student WHERE class_id = ?)', [id]);
+
+        // Xóa điểm danh của buổi học bù
+        await connection.query('DELETE FROM roll_call WHERE make_up_class_id IN (SELECT id FROM make_up_class WHERE class_id = ?)', [id]);
+
+        // Xóa các buổi học bù
+        await connection.query('DELETE FROM make_up_class WHERE class_id = ?', [id]);
+
+        // Xóa sinh viên khỏi nhóm học
+        await connection.query('DELETE FROM student WHERE class_id = ?', [id]);
+
+        // Xóa nhóm học (class)
+        const [result] = await connection.query('DELETE FROM class WHERE id = ?', [id]);
+
         if (result.affectedRows > 0) {
+            await connection.commit(); // Xác nhận xóa thành công
             res.json({ message: 'Xóa nhóm học thành công' });
         } else {
+            await connection.rollback(); // Hoàn tác nếu không xóa được
             res.status(404).json({ error: 'Nhóm học không tồn tại' });
         }
     } catch (error) {
-        console.error('Lỗi xóa nhóm:', error);
+        await connection.rollback(); // Hoàn tác nếu có lỗi
+        console.error('💥 Lỗi xóa nhóm:', error);
         res.status(500).json({ error: 'Lỗi server' });
+    } finally {
+        connection.release(); // Giải phóng kết nối
     }
 });
 
 
+
+
 router.post("/group", async (req, res) => {
     try {
-        const { name, subject, type, grade, max_student } = req.body;
+        const { name, subject, type, grade, max_student, period_time_ids } = req.body;
 
-        if (!name || !subject || !type || !grade || !max_student) {
-            return res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin nhóm học!" });
+        if (!name || !subject || !type || !grade || !max_student || !period_time_ids || period_time_ids.length === 0) {
+            return res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin nhóm học và thời gian học!" });
         }
 
-        // Kiểm tra giá trị grade truyền vào
-        console.log("Học viên tối đa nhận được từ request:", max_student);
-
-        // Kiểm tra nếu grade là số hoặc chuỗi
+        // Kiểm tra grade
         const [gradeRows] = await db.execute("SELECT id FROM grade WHERE grade = ?", [grade]);
-
-        console.log("Kết quả truy vấn grade:", gradeRows);
-
         if (gradeRows.length === 0) {
             return res.status(400).json({ message: `Giá trị grade '${grade}' không tồn tại trong bảng grade!` });
         }
-
-        const gradeId = gradeRows[0].id; // Lấy ID hợp lệ của grade
+        const gradeId = gradeRows[0].id;
 
         // Thêm vào bảng class
         const sql = `INSERT INTO class (name, subject, type, grade, max_student) VALUES (?, ?, ?, ?, ?)`;
         const [result] = await db.execute(sql, [name, subject, type, gradeId, max_student]);
 
-        res.status(201).json({ message: "Nhóm học đã được tạo thành công!", id: result.insertId });
+        const classId = result.insertId; // ID của nhóm học vừa tạo
+
+        // Thêm dữ liệu vào bảng trung gian class_period_time
+        const periodSql = `INSERT INTO period_time_class (class_id, period_time_id) VALUES (?, ?)`;
+        for (const periodId of period_time_ids) {
+            await db.execute(periodSql, [classId, periodId]);
+        }
+
+        res.status(201).json({ message: "Nhóm học đã được tạo thành công!", id: classId });
     } catch (err) {
         console.error("Lỗi khi tạo nhóm học:", err);
         res.status(500).json({ message: "Lỗi server, không thể tạo nhóm học!" });
     }
 });
+
 
 // API lấy danh sách lớp
 router.get("/classes", async (req, res) => {

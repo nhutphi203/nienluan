@@ -55,8 +55,9 @@ SELECT
         SEPARATOR ', '
     ) AS schedule
 FROM class c
-JOIN period_time_class ptc ON c.id = ptc.class_id
-JOIN period_time pt ON ptc.period_time_id = pt.id
+LEFT JOIN period_time_class ptc ON c.id = ptc.class_id
+LEFT JOIN period_time pt ON ptc.period_time_id = pt.id
+
 GROUP BY c.id, c.name, c.subject, c.type, grade, c.max_student;
     `;
 
