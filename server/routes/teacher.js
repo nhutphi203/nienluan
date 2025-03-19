@@ -20,17 +20,136 @@ router.get("/manager/classes", async (req, res) => {
         res.status(500).json({ error: "Lỗi lấy danh sách lớp!" });
     }
 });
+router.delete("/unregister-class/:teacher_id/:class_id", (req, res) => {
+    const { teacher_id, class_id } = req.params;
 
-router.post("/manager/classes", async (req, res) => {
-    try {
-        const { name, subject, type, grade, max_student } = req.body;
-        await db.query("INSERT INTO class (name, subject, type, grade, max_student) VALUES (?, ?, ?, ?, ?)",
-            [name, subject, type, grade, max_student]);
+    const sql = "UPDATE class SET teacher_id = NULL WHERE id = ? AND teacher_id = ?";
 
-        res.status(201).json({ message: "Lớp học đã được tạo!" });
-    } catch (err) {
-        res.status(500).json({ error: "Lỗi tạo lớp học!" });
+    db.query(sql, [class_id, teacher_id], (err, result) => {
+        if (err) {
+            console.error("❌ Lỗi khi hủy đăng ký dạy:", err);
+            return res.status(500).json({ error: "Lỗi khi hủy đăng ký dạy!" });
+        }
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: "Không tìm thấy lớp hoặc bạn không dạy lớp này!" });
+        }
+        res.json({ message: "Hủy đăng ký dạy thành công!" });
+    });
+});
+
+
+router.post("/classes/:classId/assign-teacher", (req, res) => {
+    const { teacher_id } = req.body;
+    const classId = parseInt(req.params.classId, 10);
+
+    if (!teacher_id || isNaN(classId)) {
+        return res.status(400).json({ error: "Dữ liệu không hợp lệ!" });
     }
+
+    const sql = `UPDATE class SET teacher_id = ? WHERE id = ? AND teacher_id IS NULL`;
+    db.query(sql, [teacher_id, classId], (err, result) => {
+        if (err) {
+            console.error("❌ Lỗi khi cập nhật giáo viên:", err);
+            return res.status(500).json({ error: "Lỗi khi cập nhật giáo viên!" });
+        }
+        if (result.affectedRows === 0) {
+            return res.status(400).json({ error: "Lớp này đã có giáo viên hoặc không tồn tại!" });
+        }
+        res.json({ message: "✅ Cập nhật giáo viên thành công!" });
+    });
+});
+
+router.get("/classes/unassigned", (req, res) => {
+    const sql = `
+    SELECT 
+        c.id, 
+        c.name, 
+        CASE 
+            WHEN c.type = 'NORMAL' THEN 'Lớp cơ bản'
+            WHEN c.type = 'Normal' THEN 'Lớp cơ bản 1'
+            WHEN c.type = 'Math' THEN 'Lớp ôn thi vào 10, thi đại học'
+            WHEN c.type = 'VIP' THEN 'Lớp ôn thi học sinh giỏi'
+            WHEN c.type = 'Advanced' THEN 'Lớp nâng cao'
+            ELSE 'Khác'
+        END AS type_mapped, 
+        CASE 
+            WHEN c.grade = 1 THEN 10
+            WHEN c.grade = 2 THEN 11
+            WHEN c.grade = 3 THEN 12
+            ELSE c.grade
+        END AS grade,
+        c.max_student,
+        (SELECT COUNT(*) FROM registrations WHERE class_id = c.id) AS current_student,
+        GROUP_CONCAT(
+            DISTINCT CONCAT(pt.date_of_week, ' (', pt.start_at, ' - ', pt.end_at, ')') 
+            ORDER BY FIELD(pt.date_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')
+            SEPARATOR ', '
+        ) AS schedule
+    FROM class c
+    LEFT JOIN period_time_class ptc ON c.id = ptc.class_id
+    LEFT JOIN period_time pt ON ptc.period_time_id = pt.id
+    WHERE c.teacher_id IS NULL
+    GROUP BY c.id;`;
+
+    db.query(sql, (err, results) => {
+        if (err) {
+            console.error("❌ Lỗi khi lấy danh sách lớp:", err);
+            return res.status(500).json({ error: "Lỗi khi lấy danh sách lớp!" });
+        }
+        if (results.length === 0) {
+            return res.status(404).json({ message: "Không có lớp nào cần giáo viên." });
+        }
+        res.json(results);
+    });
+});
+router.get("/teacher/classes/:teacher_id", (req, res) => {
+    const teacherId = parseInt(req.params.teacher_id, 10);
+
+    if (isNaN(teacherId)) {
+        return res.status(400).json({ error: "ID giáo viên không hợp lệ!" });
+    }
+
+    const sql = `SELECT 
+        c.id, 
+        c.name, 
+        CASE 
+            WHEN c.type = 'NORMAL' THEN 'Lớp cơ bản'
+            WHEN c.type = 'Normal' THEN 'Lớp cơ bản 1'
+            WHEN c.type = 'Math' THEN 'Lớp ôn thi vào 10, thi đại học'
+            WHEN c.type = 'VIP' THEN 'Lớp ôn thi học sinh giỏi'
+            WHEN c.type = 'Advanced' THEN 'Lớp nâng cao'
+            ELSE 'Khác'
+        END AS type_mapped, 
+        CASE 
+            WHEN c.grade = 1 THEN 10
+            WHEN c.grade = 2 THEN 11
+            WHEN c.grade = 3 THEN 12
+            ELSE c.grade
+        END AS grade,
+        c.max_student,
+        (SELECT COUNT(*) FROM registrations WHERE class_id = c.id) AS current_student,
+        GROUP_CONCAT(
+            DISTINCT CONCAT(pt.date_of_week, ' (', pt.start_at, ' - ', pt.end_at, ')') 
+            ORDER BY FIELD(pt.date_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')
+            SEPARATOR ', '
+        ) AS schedule
+    FROM class c
+    LEFT JOIN period_time_class ptc ON c.id = ptc.class_id
+    LEFT JOIN period_time pt ON ptc.period_time_id = pt.id
+    WHERE c.teacher_id = ?  -- 🔥 Chỉ lấy lịch của giáo viên hiện tại
+    GROUP BY c.id;`;
+
+    db.query(sql, [teacherId], (err, results) => {
+        if (err) {
+            console.error("❌ Lỗi khi lấy danh sách lớp:", err);
+            return res.status(500).json({ error: "Lỗi khi lấy danh sách lớp!" });
+        }
+        if (results.length === 0) {
+            console.log("📌 Giáo viên chưa đăng ký lớp nào.");
+            return res.json([]); // 🔥 Đổi từ 404 thành trả về []
+        }
+        res.json(results);
+    });
 });
 
 router.post("/manager/classes/:id/periods", async (req, res) => {
@@ -145,7 +264,7 @@ router.get("/students", (req, res) => {
     }
 
     const sql = `
-        SELECT u.id, u.fullName 
+        SELECT u.id, u.fullName ,u.username
         FROM users u
         JOIN registrations r ON u.id = r.user_id
         WHERE u.role = 'hv' AND r.class_id = ?;

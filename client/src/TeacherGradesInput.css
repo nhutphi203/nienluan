@@ -1,58 +1,142 @@
+/* ====== Reset một số thuộc tính mặc định ====== */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Arial', sans-serif;
+}
+
+/* ====== Container chính ====== */
 .teacher-container {
-    max-width: 800px;
-    margin: 20px auto;
+  
+    margin: 30px auto;
     padding: 20px;
-    background: #fff;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    background: #ffffff;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     border-radius: 10px;
+    width: 90%; /* Hoặc 100% nếu muốn full màn hình */
+    max-width: 1000px; 
 }
 
 .teacher-title {
     text-align: center;
-    font-size: 22px;
-    font-weight: bold;
-    margin-bottom: 15px;
+    font-size: 24px;
+    color: #333;
+    margin-bottom: 20px;
 }
 
+/* ====== Dropdown chọn nhóm ====== */
+.teacher-select-group {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.teacher-select-group label {
+    font-size: 16px;
+    font-weight: bold;
+    margin-right: 10px;
+}
+
+.teacher-select-group select {
+    padding: 8px;
+    font-size: 16px;
+    border: 2px solid #007bff;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.teacher-select-group select:focus {
+    outline: none;
+    border-color: #0056b3;
+}
+
+/* ====== Bảng danh sách học viên ====== */
 .teacher-table {
     width: 100%;
     border-collapse: collapse;
+    margin-top: 10px;
 }
 
-.teacher-table th, 
-.teacher-table td {
+.teacher-table th, .teacher-table td {
     border: 1px solid #ddd;
-    padding: 8px;
+    padding: 10px;
     text-align: center;
 }
 
 .teacher-table th {
-    background: #f4f4f4;
-    font-weight: bold;
+    background-color: #007bff;
+    color: white;
+}
+
+.teacher-table tr:nth-child(even) {
+    background-color: #f9f9f9;
 }
 
 .teacher-table tr:hover {
-    background: #f9f9f9;
+    background-color: #f1f1f1;
 }
 
+/* ====== Ô nhập điểm ====== */
 .teacher-input {
-    width: 60px;
+    width: 50px;
     text-align: center;
     padding: 5px;
-    border: 1px solid #ccc;
+    font-size: 16px;
+    border: 2px solid #007bff;
     border-radius: 5px;
+    transition: 0.3s;
 }
 
+.teacher-input:focus {
+    outline: none;
+    border-color: #0056b3;
+}
+
+/* ====== Nút xác nhận ====== */
 .teacher-btn {
-    background: #007bff;
+    background-color: #28a745;
     color: white;
-    padding: 5px 10px;
     border: none;
+    padding: 8px 12px;
+    font-size: 14px;
     border-radius: 5px;
     cursor: pointer;
     transition: 0.3s;
 }
 
 .teacher-btn:hover {
-    background: #0056b3;
+    background-color: #218838;
+
+}
+.teacher-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* Giữ khoảng cách hợp lý */
+    gap: 10px;
+    flex-wrap: nowrap; /* Ngăn chặn xuống hàng */
+}
+
+    
+    .teacher-exam-name,
+    .teacher-select-group {
+        display: flex;
+        align-items: center; /* Căn giữa label và input */
+        gap: 10px; /* Khoảng cách giữa label và input */
+    }
+    
+    .teacher-exam-name label,
+.teacher-select-group label {
+    font-weight: bold;
+    min-width: 100px; /* Giảm xuống để tiết kiệm không gian */
+    text-align: right;
+    white-space: nowrap; /* Đảm bảo không xuống dòng */
+}
+
+.teacher-exam-name input,
+.teacher-select-group select {
+    width: auto; /* Để nó không quá lớn */
+    max-width: 200px; /* Giới hạn tối đa */
 }

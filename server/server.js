@@ -65,12 +65,192 @@ app.use("/notifications", notificationsRoutes);
 import newsRoutes from "./routes/news.js";
 app.use("/news", newsRoutes);
 
+import multer from "multer";
+import path from "path";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const uploadPath = path.join(__dirname, "uploads");
+        cb(null, uploadPath);
+    },
+    filename: function (req, file, cb) {
+        cb(null, file.originalname); // ✅ Giữ nguyên tên file
+    }
+});
+
+
+
+const upload = multer({
+    storage: storage,
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = [".pdf", ".docx", ".pptx"];
+        const ext = path.extname(file.originalname).toLowerCase();
+        if (!allowedTypes.includes(ext)) {
+            return cb(new Error("Chỉ chấp nhận file PDF, DOCX, PPTX!"));
+        }
+        cb(null, true);
+    },
+});
+
+app.post("/upload", upload.single("file"), (req, res) => {
+    console.log("🔍 Debug req.file:", req.file); // Kiểm tra file nhận được
+
+    if (!req.file) {
+        return res.status(400).json({ error: "Không có tệp được tải lên!" });
+    }
+
+    const classId = req.body.class_id;
+    const filePath = "/uploads/" + req.file.filename;
+
+    console.log("✅ Đã nhận file:", req.file.filename, "Lưu vào:", filePath);
+
+    const teacherId = req.body.teacher_id; // Nhận từ request body
+    console.log("Teacher ID:", teacherId);
+
+
+    const sql = "INSERT INTO documents (class_id, title, file_path, teacher_id) VALUES (?, ?, ?, ?)";
+
+    db.query(sql, [classId, req.file.originalname, filePath, teacherId], (err) => {
+        if (err) {
+            console.error("🔥 Lỗi MySQL:", err);
+            return res.status(500).json({ error: "Lỗi khi lưu tài liệu vào database" });
+        }
+        res.json({ message: "Tải tài liệu lên thành công!" });
+    });
+});
+
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+// API lấy file tài liệu
+app.get("/documents/:id", (req, res) => {
+    const docId = req.params.id;
+
+    // 🔍 Giả sử bạn lấy thông tin tài liệu từ database
+    const sql = "SELECT file_path FROM documents WHERE id = ?";
+    db.query(sql, [docId], (err, results) => {
+        if (err) {
+            return res.status(500).json({ error: "Lỗi truy vấn database" });
+        }
+        if (results.length === 0) {
+            return res.status(404).json({ error: "Tài liệu không tồn tại" });
+        }
+
+        const filePath = path.join(__dirname, results[0].file_path);
+        res.sendFile(filePath);
+    });
+});
 
 // API kiểm tra server hoạt động
 app.get("/", (req, res) => {
     res.send("API đang hoạt động! 🚀");
 });
+
+app.get("/documents/class/:class_id", (req, res) => {
+    const classId = req.params.class_id;
+    const sql = "SELECT * FROM documents WHERE class_id = ?";
+
+    db.query(sql, [classId], (err, result) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        res.json(result.length > 0 ? result : []); // Luôn trả về danh sách, dù có dữ liệu hay không
+    });
+});
+
+
+app.get("/download/:filename", (req, res) => {
+    const filePath = `uploads/${req.params.filename}`;
+
+    if (fs.existsSync(filePath)) {
+        res.download(filePath);
+    } else {
+        res.status(404).json({ message: "File không tồn tại" });
+    }
+});
+// 🛠 XÓA TÀI LIỆU
+
+app.delete("/documents/:id", (req, res) => {
+    const docId = req.params.id;
+
+    // Lấy đường dẫn file từ database
+    const sql = "SELECT file_path FROM documents WHERE id = ?";
+    db.query(sql, [docId], (err, results) => {
+        if (err) return res.status(500).json({ error: "Lỗi database" });
+        if (results.length === 0) return res.status(404).json({ error: "Không tìm thấy tài liệu" });
+
+        const filePath = path.join(__dirname, results[0].file_path);
+
+        // Xóa file trong thư mục uploads
+        fs.unlink(filePath, (err) => {
+            if (err && err.code !== "ENOENT") {
+                console.error("❌ Lỗi khi xóa file:", err);
+                return res.status(500).json({ error: "Lỗi khi xóa file" });
+            }
+
+            // Xóa khỏi database
+            const deleteSql = "DELETE FROM documents WHERE id = ?";
+            db.query(deleteSql, [docId], (err, result) => {
+                if (err) return res.status(500).json({ error: "Lỗi database khi xóa" });
+
+                res.json({ message: "Đã xóa tài liệu thành công!" });
+            });
+        });
+    });
+});
+
+// 🛠 CẬP NHẬT THÔNG TIN TÀI LIỆU
+app.put("/documents/:id", (req, res) => {
+    const documentId = req.params.id;
+    const { title, class_id, teacher_id } = req.body;
+
+    const updateQuery = "UPDATE documents SET title = ?, class_id = ?, teacher_id = ? WHERE id = ?";
+    db.query(updateQuery, [title, class_id, teacher_id, documentId], (err, result) => {
+        if (err) {
+            console.error("Lỗi khi cập nhật tài liệu:", err);
+            return res.status(500).json({ message: "Lỗi server khi cập nhật tài liệu" });
+        }
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: "Không tìm thấy tài liệu!" });
+        }
+        res.json({ message: "Cập nhật tài liệu thành công!" });
+    });
+});
+
+// 🛠 TẢI XUỐNG TÀI LIỆU
+import fs from "fs";
+
+app.get("/documents/download/:id", (req, res) => {
+    const documentId = req.params.id;
+
+    const query = "SELECT file_path FROM documents WHERE id = ?";
+    db.query(query, [documentId], (err, results) => {
+        if (err) {
+            console.error("Lỗi truy vấn file:", err);
+            return res.status(500).json({ message: "Lỗi server khi tìm tài liệu" });
+        }
+        if (results.length === 0) {
+            return res.status(404).json({ message: "Không tìm thấy tài liệu!" });
+        }
+
+        const filePath = results[0].file_path;
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ message: "File không tồn tại trên server!" });
+        }
+
+        res.download(filePath, (err) => {
+            if (err) {
+                console.error("Lỗi khi tải xuống file:", err);
+                res.status(500).json({ message: "Lỗi server khi tải xuống tài liệu" });
+            }
+        });
+    });
+});
+
+
 
 app.post("/register", async (req, res) => {
     console.log("Dữ liệu nhận được:", req.body);
@@ -106,6 +286,19 @@ app.post("/register", async (req, res) => {
         });
 
     });
+});
+app.get("/teachers", (req, res) => {
+    db.query(
+        "SELECT id, username, fullName, email, phone FROM users WHERE role = 'gv'",
+        (error, results) => {
+            if (error) {
+                console.error("❌ Lỗi khi lấy danh sách giáo viên:", error);
+                res.status(500).json({ error: "Lỗi server" });
+            } else {
+                res.json(results);
+            }
+        }
+    );
 });
 
 

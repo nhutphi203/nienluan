@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";  // Import WebSocket client
-import { FaHome, FaBell, FaSignOutAlt, FaUser, FaBook, FaChalkboardTeacher, FaCog, FaMoneyBill, FaSearch, FaMoon, FaSun, FaCalendarAlt, FaDatabase, FaEnvelope, FaChartBar } from "react-icons/fa";
+import { FaHome, FaBell, FaSignOutAlt, FaUser, FaBook, FaChalkboardTeacher, FaFileAlt, FaUsers, FaCog, FaMoneyBill, FaSearch, FaMoon, FaSun, FaCalendarAlt, FaDatabase, FaEnvelope, FaChartBar } from "react-icons/fa";
 import "./Home.css";
 import Revenue from "./Revenue";
 import axios from "axios";
@@ -13,16 +13,89 @@ import "react-toastify/dist/ReactToastify.css";
 const socket = io("http://localhost:5000"); // Kết nối tới server WebSocket
 
 const Home = ({ user, token }) => {
-    const navigate = useNavigate();
     const [news, setNews] = useState([]);
-
+    const navigate = useNavigate();
+    const [documents, setDocuments] = useState([]);
     const [currentUser, setCurrentUser] = useState(user || JSON.parse(localStorage.getItem("user")));
+
     const [showSettings, setShowSettings] = useState(false);
     const [notifications, setNotifications] = useState([]);
     const [showNotifications, setShowNotifications] = useState();
     const [schedule, setSchedule] = useState([]);
     const [siteNotifications, setSiteNotifications] = useState([]);
     const [darkMode, setDarkMode] = useState(false);
+    const [students, setStudents] = useState([]);
+
+    useEffect(() => {
+        if (currentUser && currentUser.role === "gv") {
+            fetchTeachingSchedule(currentUser.id);
+        }
+    }, [currentUser]); const fetchTeachingSchedule = async (teacherId) => {
+        try {
+            const response = await axios.get(`http://localhost:5000/teacher/teacher/classes/${teacherId}`);
+            console.log("Lịch dạy từ API:", response.data);
+            setSchedule(response.data);
+        } catch (error) {
+            console.error("Lỗi khi lấy lịch dạy:", error);
+            toast.error("⚠️ Không thể tải lịch dạy!");
+        }
+    };
+    const handleCancelTeaching = async (classId) => {
+        try {
+            const response = await axios.delete(`http://localhost:5000/teacher/unregister-class/${currentUser.id}/${classId}`);
+
+            if (response.status === 200) {
+                toast.success("✅ Hủy đăng ký dạy thành công!");
+                fetchTeachingSchedule(currentUser.id); // Cập nhật lại danh sách lớp
+                socket.emit("teachingUnregistered", { teacherId: currentUser.id, classId });
+            }
+        } catch (error) {
+            console.error("Lỗi khi hủy đăng ký dạy:", error);
+            toast.error("❌ Không thể hủy đăng ký dạy!");
+        }
+    };
+    const renderTeachingSchedule = () => {
+        if (schedule.length === 0) {
+            return <p className="no-schedule-msg">Bạn chưa đăng ký lớp nào!</p>;
+        }
+
+        return (
+            <table className="schedule-table">
+                <thead>
+                    <tr>
+                        <th>Tên lớp</th>
+                        <th>Loại lớp</th>
+                        <th>Khối</th>
+                        <th>Số học sinh</th>
+                        <th>Lịch dạy</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {schedule.map((item, index) => (
+                        <tr key={index}>
+                            <td>{item.name}</td>
+                            <td>{item.type_mapped}</td>
+                            <td>{item.grade}</td>
+                            <td>{item.current_student} / {item.max_student}</td>
+                            <td>
+                                {item.schedule.split(", ").map((session, i) => (
+                                    <div key={i}>{session}</div>
+                                ))}
+                            </td>
+                            <td>
+                                <button onClick={() => handleCancelTeaching(item.id)} className="cancel-btn">
+                                    Hủy đăng ký dạy
+                                </button>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        );
+    };
+
+
 
 
 
@@ -145,10 +218,10 @@ const Home = ({ user, token }) => {
                         <tr key={index}>
                             <td>{item.name}</td>
                             <td>{item.subject}</td>
-                            <td>{item.type}</td>
+                            <td>{item.type_mapped}</td> {/* 🔥 Đổi từ type -> type_mapped */}
                             <td>{item.grade}</td>
                             <td>
-                                {item.schedule.split("; ").map((session, i) => (
+                                {item.schedule.split(", ").map((session, i) => ( // 🔥 Dấu phân cách từ SQL là ", "
                                     <div key={i}>{session}</div>
                                 ))}
                             </td>
@@ -170,11 +243,15 @@ const Home = ({ user, token }) => {
             { path: "/fees", label: "Học phí", icon: <FaCog /> },
             { path: "/makeup-classes", label: "Học bù", icon: <FaUser /> },
             { path: "/register-group", label: "Đăng ký nhóm học", icon: <FaCalendarAlt /> },
+            { path: "/documents", label: "Tài liệu", icon: <FaFileAlt /> }, // ✅ Thêm mục này
+            { path: "/student-list", label: "Danh sách học viên", icon: <FaUsers /> },
         ],
         gv: [
             { path: "/teaching-schedule", label: "Lịch giảng dạy", icon: <FaHome /> },
             { path: "/student-grades-input", label: "Chấm điểm học sinh", icon: <FaBell /> },
             { path: "/attendance", label: "Chấm công", icon: <FaCog /> },
+            { path: "/register-class", label: "Đăng ký dạy học", icon: <FaChalkboardTeacher /> },
+            { path: "/documents", label: "Tài liệu", icon: <FaFileAlt /> }, // ✅ Thêm mục này
         ],
         cm: [
             { path: "/manage-groups", label: "Quản lý nhóm học", icon: <FaHome /> },
@@ -279,6 +356,13 @@ const Home = ({ user, token }) => {
                             </section>
                         ) : null
                     )}
+                    {currentUser.role === "gv" && (
+                        <div className="teaching-schedule">
+                            <h2>Lịch dạy của bạn</h2>
+                            {renderTeachingSchedule()}
+                        </div>
+                    )}
+
 
                 </main>
             </div>

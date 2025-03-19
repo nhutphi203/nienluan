@@ -115,13 +115,12 @@ router.get("/classes/:userId", (req, res) => {
 router.post("/register-group", (req, res) => {
     const { userId, classId } = req.body;
 
-    // ✅ Kiểm tra dữ liệu đầu vào
     if (!userId || !classId) {
         console.error("❌ Thiếu userId hoặc classId!");
         return res.status(400).json({ error: "Thiếu userId hoặc classId!" });
     }
 
-    // 🔍 Truy vấn để lấy thông tin lớp học & môn học
+    // 🔍 Kiểm tra thông tin lớp học
     const checkClassQuery = `
         SELECT subject, max_student, fee_amount, current_student 
         FROM class 
@@ -138,14 +137,12 @@ router.post("/register-group", (req, res) => {
         }
 
         const { subject, max_student, fee_amount, current_student } = classResults[0];
-        console.log(`📌 DEBUG: Lớp ${classId} - current: ${current_student}, max: ${max_student}`);
 
-        // 🛑 Kiểm tra nếu lớp đã đầy
         if (current_student >= max_student) {
             return res.status(400).json({ error: "Lớp đã đầy, không thể đăng ký!" });
         }
 
-        // 🔍 Kiểm tra số môn học mà học viên đã đăng ký
+        // 🔍 Kiểm tra số môn học đã đăng ký
         const checkSubjectsQuery = `
             SELECT DISTINCT c.subject 
             FROM registrations r
@@ -161,17 +158,15 @@ router.post("/register-group", (req, res) => {
 
             const registeredSubjects = subjectResults.map(row => row.subject);
 
-            // 🛑 Kiểm tra số môn học đã đăng ký (tối đa 3 môn)
             if (registeredSubjects.length >= 3) {
                 return res.status(400).json({ error: "Bạn chỉ có thể đăng ký tối đa 3 môn học!" });
             }
 
-            // 🛑 Kiểm tra trùng môn
             if (registeredSubjects.includes(subject)) {
                 return res.status(400).json({ error: `Bạn đã đăng ký môn ${subject} rồi!` });
             }
 
-            // ✅ Nếu hợp lệ, tiến hành đăng ký lớp học
+            // ✅ Đăng ký lớp học
             const insertQuery = "INSERT INTO registrations (user_id, class_id) VALUES (?, ?)";
             db.query(insertQuery, [userId, classId], (err) => {
                 if (err) {
@@ -181,19 +176,20 @@ router.post("/register-group", (req, res) => {
 
                 // 💰 Cập nhật học phí
                 const updateFeeQuery = `
-                    INSERT INTO student_fee (student_id, class_id, amount, start_at, end_at) 
-                    VALUES (?, ?, ?, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 1 MONTH))
-                    ON DUPLICATE KEY UPDATE amount = amount + ?;
+                    INSERT IGNORE INTO student_fee (student_id, class_id, amount, start_at, end_at, is_paid) 
+                    VALUES (?, ?, ?, DATE_FORMAT(CURDATE(), '%Y-%m-01'), LAST_DAY(DATE_ADD(CURDATE(), INTERVAL 1 MONTH)), 0);
                 `;
 
-                db.query(updateFeeQuery, [userId, classId, fee_amount, fee_amount], (err) => {
+                db.query(updateFeeQuery, [userId, classId, fee_amount], (err) => {
                     if (err) {
                         console.error("❌ Lỗi cập nhật học phí: ", err);
-                        return res.status(500).json({ error: "Lỗi cập nhật học phí", details: err.message });
+                        return res.status(500).json({ error: "Lỗi cập nhật học phí!", details: err.message });
                     }
 
                     // 👥 Cập nhật số lượng học viên trong lớp
-                    const updateClassQuery = "UPDATE class SET current_student = current_student + 1 WHERE id = ?";
+                    const updateClassQuery = `
+                        UPDATE class SET current_student = current_student + 1 WHERE id = ? AND current_student < max_student;
+                    `;
                     db.query(updateClassQuery, [classId], (err) => {
                         if (err) {
                             console.error("❌ Lỗi cập nhật số lượng học viên: ", err);
@@ -210,29 +206,41 @@ router.post("/register-group", (req, res) => {
 
 
 
+
 router.get("/registered-classes/:userId", (req, res) => {
     const userId = req.params.userId;
 
     const sql = `
-  SELECT 
-            c.id, 
-            c.name, 
-            c.subject, 
-            c.type, 
-            c.grade, 
-            c.max_student,
-            (SELECT COUNT(*) FROM registrations WHERE class_id = c.id) AS current_student,
-            GROUP_CONCAT(
-                DISTINCT CONCAT(pt.date_of_week, ' (', pt.start_at, ' - ', pt.end_at, ')') 
-                ORDER BY FIELD(pt.date_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')
-                SEPARATOR ', '
-            ) AS schedule
-        FROM class c
-        JOIN registrations r ON c.id = r.class_id
-        JOIN period_time_class ptc ON c.id = ptc.class_id
-        JOIN period_time pt ON ptc.period_time_id = pt.id
-        WHERE r.user_id = ?
-        GROUP BY c.id, c.name, c.subject, c.type, c.grade, c.max_student;
+SELECT 
+    c.id, 
+    c.name, 
+    c.subject, 
+    -- 🔥 Ánh xạ trực tiếp loại lớp
+    CASE 
+        WHEN c.type = 'NORMAL' THEN 'Lớp cơ bản'
+        WHEN c.type = 'Normal' THEN 'Lớp cơ bản 1'
+        WHEN c.type = 'Math' THEN 'Lớp ôn thi vào 10, thi đại học'
+        WHEN c.type = 'VIP' THEN 'Lớp ôn thi học sinh giỏi'
+        WHEN c.type = 'Advanced' THEN 'Lớp nâng cao'
+        ELSE 'Khác'
+    END AS type_mapped,
+    c.grade, 
+    c.max_student,
+    -- Đếm số học viên hiện tại
+    (SELECT COUNT(*) FROM registrations WHERE class_id = c.id) AS current_student,
+    -- Lấy lịch học, gom nhóm theo thứ tự ngày trong tuần
+    GROUP_CONCAT(
+        DISTINCT CONCAT(pt.date_of_week, ' (', pt.start_at, ' - ', pt.end_at, ')') 
+        ORDER BY FIELD(pt.date_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')
+        SEPARATOR ', '
+    ) AS schedule
+FROM class c
+JOIN registrations r ON c.id = r.class_id
+JOIN period_time_class ptc ON c.id = ptc.class_id
+JOIN period_time pt ON ptc.period_time_id = pt.id
+WHERE r.user_id = ?
+GROUP BY c.id, c.name, c.subject, type_mapped, c.grade, c.max_student;
+
 
     `;
 
@@ -246,8 +254,135 @@ router.get("/registered-classes/:userId", (req, res) => {
         return res.status(200).json(results);
     });
 });
+router.get('/fees/:studentId', (req, res) => {
+    const { studentId } = req.params;
+    console.log('studentId nhận được:', studentId);
 
-// 📌 API: Hủy đăng ký nhóm học
+    db.query(
+        `SELECT 
+            c.name AS class_name, 
+            sf.class_id, 
+            sf.amount, 
+            sf.is_paid 
+         FROM student_fee sf
+         LEFT JOIN class c ON sf.class_id = c.id
+         WHERE sf.student_id = ?`,
+        [parseInt(studentId)],
+        (error, rows) => {
+            if (error) {
+                console.error('Lỗi khi lấy danh sách học phí:', error);
+                return res.status(500).json({ success: false, message: 'Lỗi server' });
+            }
+            console.log('Rows từ database:', rows);
+            res.json(rows);
+        }
+    );
+});
+
+
+router.post('/pay', (req, res) => {
+    const { studentId } = req.body;
+
+    if (!studentId) {
+        return res.status(400).json({ success: false, message: 'Thiếu studentId' });
+    }
+
+    db.getConnection((err, connection) => {
+        if (err) {
+            console.error('Lỗi lấy kết nối:', err);
+            return res.status(500).json({ success: false, message: 'Lỗi server' });
+        }
+
+        connection.beginTransaction((err) => {
+            if (err) {
+                console.error('Lỗi bắt đầu transaction:', err);
+                connection.release();
+                return res.status(500).json({ success: false, message: 'Lỗi server' });
+            }
+
+            connection.query(
+                'SELECT id, amount FROM student_fee WHERE student_id = ? AND is_paid = 0',
+                [studentId],
+                (error, result) => {
+                    if (error) {
+                        console.error('Lỗi truy vấn unpaid fees:', error);
+                        connection.rollback(() => {
+                            connection.release();
+                            res.status(500).json({ success: false, message: 'Lỗi server' });
+                        });
+                        return;
+                    }
+
+                    const unpaidFees = result;
+
+                    if (unpaidFees.length === 0) {
+                        connection.rollback(() => {
+                            connection.release();
+                            res.json({ success: true, message: 'Không có khoản phí nào cần thanh toán' });
+                        });
+                        return;
+                    }
+
+                    connection.query(
+                        'UPDATE student_fee SET is_paid = 1 WHERE student_id = ? AND is_paid = 0',
+                        [studentId],
+                        (error) => {
+                            if (error) {
+                                console.error('Lỗi cập nhật is_paid:', error);
+                                connection.rollback(() => {
+                                    connection.release();
+                                    res.status(500).json({ success: false, message: 'Lỗi server' });
+                                });
+                                return;
+                            }
+
+                            const latestPayAt = new Date().toISOString().split('T')[0];
+                            let queriesCompleted = 0;
+                            const totalQueries = unpaidFees.length;
+
+                            unpaidFees.forEach((fee) => {
+                                const alreadyPay = fee.amount;
+                                const remaining = 0;
+
+                                connection.query(
+                                    'INSERT INTO student_pay_fee (student_id, student_fee, already_pay, remaining, latest_pay_at) VALUES (?, ?, ?, ?, ?)',
+                                    [studentId, fee.id, alreadyPay, remaining, latestPayAt],
+                                    (error) => {
+                                        if (error) {
+                                            console.error('Lỗi insert student_pay_fee:', error);
+                                            connection.rollback(() => {
+                                                connection.release();
+                                                res.status(500).json({ success: false, message: 'Lỗi server' });
+                                            });
+                                            return;
+                                        }
+
+                                        queriesCompleted++;
+                                        if (queriesCompleted === totalQueries) {
+                                            connection.commit((err) => {
+                                                if (err) {
+                                                    console.error('Lỗi commit transaction:', err);
+                                                    connection.rollback(() => {
+                                                        connection.release();
+                                                        res.status(500).json({ success: false, message: 'Lỗi server' });
+                                                    });
+                                                    return;
+                                                }
+                                                connection.release();
+                                                res.json({ success: true, message: 'Thanh toán thành công' });
+                                            });
+                                        }
+                                    }
+                                );
+                            });
+                        }
+                    );
+                }
+            );
+        });
+    });
+});
+
 router.delete("/unregister-group/:studentId/:classId", (req, res) => {
     const { studentId, classId } = req.params;
 
@@ -259,43 +394,91 @@ router.delete("/unregister-group/:studentId/:classId", (req, res) => {
 
         // Bắt đầu transaction
         connection.beginTransaction(() => {
-            // 1️⃣ Kiểm tra xem học viên có điểm trong lớp này không
-            const checkScoreSql = `SELECT COUNT(*) AS count FROM student_scores WHERE student_id = ? AND class_id = ?`;
-            connection.query(checkScoreSql, [studentId, classId], (err, scoreResult) => {
+            // 🔍 Kiểm tra thanh toán
+            const checkPaymentSql = `
+                SELECT COALESCE(SUM(amount), 0) AS total_paid, COALESCE(MAX(is_paid), 0) AS is_paid
+                FROM student_fee
+                WHERE student_id = ? AND class_id = ?;
+            `;
+
+            connection.query(checkPaymentSql, [studentId, classId], (err, paymentResult) => {
                 if (err) {
                     connection.rollback(() => connection.release());
-                    return res.status(500).json({ error: "Lỗi kiểm tra điểm!", details: err.message });
+                    return res.status(500).json({ error: "Lỗi kiểm tra thanh toán!", details: err.message });
                 }
 
-                if (scoreResult[0].count > 0) {
+                const totalPaid = parseFloat(paymentResult[0]?.total_paid ?? 0);
+                const isPaid = parseInt(paymentResult[0]?.is_paid ?? 0); // Đảm bảo kiểu số nguyên
+
+                console.log("🔍 Kiểm tra thanh toán:", { studentId, classId, totalPaid, isPaid });
+
+                // 🚨 Không cho hủy nếu is_paid = 1
+                if (isPaid === 1) {
+                    console.log("🚨 Hủy đăng ký bị chặn do đã thanh toán:", { studentId, classId, totalPaid, isPaid });
                     connection.rollback(() => connection.release());
-                    return res.status(400).json({ error: "Bạn đã có điểm, không thể hủy đăng ký!" });
+                    return res.status(400).json({ error: "Bạn đã thanh toán học phí, không thể hủy đăng ký!" });
                 }
 
-                // 2️⃣ Xóa đăng ký khỏi bảng registrations
-                const deleteRegistrationSql = `DELETE FROM registrations WHERE user_id = ? AND class_id = ?`;
-                connection.query(deleteRegistrationSql, [studentId, classId], (err) => {
+                // 🔍 Kiểm tra điểm số
+                const checkScoreSql = `SELECT COUNT(*) AS count FROM student_scores WHERE student_id = ? AND class_id = ?`;
+                connection.query(checkScoreSql, [studentId, classId], (err, scoreResult) => {
                     if (err) {
                         connection.rollback(() => connection.release());
-                        return res.status(500).json({ error: "Lỗi khi hủy đăng ký lớp!", details: err.message });
+                        return res.status(500).json({ error: "Lỗi kiểm tra điểm!", details: err.message });
                     }
 
-                    // 3️⃣ Cập nhật số lượng học viên trong lớp
-                    const updateClassSql = `UPDATE class SET current_student = current_student - 1 WHERE id = ?`;
-                    connection.query(updateClassSql, [classId], (err) => {
+                    console.log("🔍 Kiểm tra điểm số:", { studentId, classId, scoreCount: scoreResult[0].count });
+
+                    if (scoreResult[0].count > 0) {
+                        connection.rollback(() => connection.release());
+                        return res.status(400).json({ error: "Bạn đã có điểm, không thể hủy đăng ký!" });
+                    }
+
+                    // 🗑 Xóa `student_fee`
+                    const deleteFeeSql = `DELETE FROM student_fee WHERE student_id = ? AND class_id = ?`;
+                    connection.query(deleteFeeSql, [studentId, classId], (err, feeResult) => {
                         if (err) {
                             connection.rollback(() => connection.release());
-                            return res.status(500).json({ error: "Lỗi khi cập nhật lớp học!", details: err.message });
+                            return res.status(500).json({ error: "Lỗi xóa học phí!", details: err.message });
                         }
 
-                        // ✅ Hoàn thành transaction
-                        connection.commit((err) => {
+                        console.log("🗑 Xóa học phí:", { studentId, classId, affectedRows: feeResult.affectedRows });
+
+                        // 🗑 Xóa đăng ký nhóm học
+                        const deleteRegistrationSql = `DELETE FROM registrations WHERE user_id = ? AND class_id = ?`;
+                        connection.query(deleteRegistrationSql, [studentId, classId], (err, deleteResult) => {
                             if (err) {
                                 connection.rollback(() => connection.release());
-                                return res.status(500).json({ error: "Lỗi khi xác nhận transaction!", details: err.message });
+                                return res.status(500).json({ error: "Lỗi khi hủy đăng ký lớp!", details: err.message });
                             }
-                            connection.release();
-                            return res.json({ message: "Hủy đăng ký thành công!" });
+
+                            console.log("🗑 Xóa đăng ký:", { studentId, classId, affectedRows: deleteResult.affectedRows });
+
+                            if (deleteResult.affectedRows === 0) {
+                                connection.rollback(() => connection.release());
+                                return res.status(400).json({ error: "Học viên không tồn tại trong nhóm này!" });
+                            }
+
+                            // 📊 Cập nhật số lượng học viên trong lớp
+                            const updateClassSql = `UPDATE class SET current_student = current_student - 1 WHERE id = ?`;
+                            connection.query(updateClassSql, [classId], (err, updateResult) => {
+                                if (err) {
+                                    connection.rollback(() => connection.release());
+                                    return res.status(500).json({ error: "Lỗi khi cập nhật lớp học!", details: err.message });
+                                }
+
+                                console.log("📊 Cập nhật lớp học:", { classId, affectedRows: updateResult.affectedRows });
+
+                                // ✅ Hoàn thành transaction
+                                connection.commit((err) => {
+                                    if (err) {
+                                        connection.rollback(() => connection.release());
+                                        return res.status(500).json({ error: "Lỗi khi xác nhận transaction!", details: err.message });
+                                    }
+                                    connection.release();
+                                    return res.json({ message: "Hủy đăng ký thành công và đã xóa học phí!" });
+                                });
+                            });
                         });
                     });
                 });
@@ -304,27 +487,37 @@ router.delete("/unregister-group/:studentId/:classId", (req, res) => {
     });
 });
 
-
-
-
-
-// API: Lấy danh sách học phí theo số nhóm (class)
 router.get("/fees/:studentId", (req, res) => {
     const { studentId } = req.params;
 
     const query = `
-      SELECT 
-    r.user_id AS student_id, 
-    COUNT(DISTINCT c.name) AS group_count,  
-    COALESCE(COUNT(DISTINCT c.name) * 500000, 0) AS total_fee,  
-    (SELECT COALESCE(SUM(amount), 0) FROM student_payments WHERE student_id = r.user_id) AS already_pay,
-    (COALESCE(COUNT(DISTINCT c.name) * 500000, 0) - 
-        (SELECT COALESCE(SUM(amount), 0) FROM student_payments WHERE student_id = r.user_id)
-    ) AS remaining
+SELECT 
+    r.user_id AS student_id,
+
+    -- Lớp đã thanh toán
+    COALESCE(GROUP_CONCAT(DISTINCT CASE WHEN sf.is_paid = 1 THEN CONCAT(c.id, ':', c.name) END SEPARATOR ', '), '') AS paid_groups, 
+    COUNT(DISTINCT CASE WHEN sf.is_paid = 1 THEN r.class_id END) AS paid_group_count,
+    SUM(CASE WHEN sf.is_paid = 1 THEN sf.amount ELSE 0 END) AS total_paid_fee,
+    COALESCE(SUM(CASE WHEN sf.is_paid = 1 THEN sf.amount ELSE 0 END), 0) AS already_pay,
+    GREATEST((COUNT(DISTINCT CASE WHEN sf.is_paid = 1 THEN r.class_id END) * 500000 
+              - COALESCE(SUM(CASE WHEN sf.is_paid = 1 THEN sf.amount ELSE 0 END), 0)), 0) AS remaining_paid,
+    MAX(CASE WHEN sf.is_paid = 1 THEN sf.end_at ELSE NULL END) AS last_payment_date,
+
+    -- Lớp chưa thanh toán
+    COALESCE(GROUP_CONCAT(DISTINCT CASE WHEN sf.is_paid = 0 OR sf.is_paid IS NULL THEN CONCAT(c.id, ':', c.name) END SEPARATOR ', '), '') AS unpaid_groups, 
+    COUNT(DISTINCT CASE WHEN sf.is_paid = 0 OR sf.is_paid IS NULL THEN r.class_id END) AS unpaid_group_count,
+    COUNT(DISTINCT CASE WHEN sf.is_paid = 0 OR sf.is_paid IS NULL THEN r.class_id END) * 500000 AS total_unpaid_fee,
+    0 AS already_unpaid,
+    COUNT(DISTINCT CASE WHEN sf.is_paid = 0 OR sf.is_paid IS NULL THEN r.class_id END) * 500000 AS remaining_unpaid
+
 FROM registrations r
+LEFT JOIN student_fee sf ON r.user_id = sf.student_id AND r.class_id = sf.class_id
 LEFT JOIN class c ON r.class_id = c.id
-WHERE r.user_id = ?  
+WHERE r.user_id = ?
 GROUP BY r.user_id;
+
+
+
 
     `;
 
@@ -333,9 +526,12 @@ GROUP BY r.user_id;
             console.error("❌ Lỗi lấy danh sách học phí:", err);
             return res.status(500).json({ error: "Lỗi lấy danh sách học phí", details: err.message });
         }
+        console.log("📊 Kết quả truy vấn học phí:", results); // Debug
         res.json(results);
     });
+
 });
+
 
 router.get("/grades/:student_id/:class_id", (req, res) => {
     const { student_id, class_id } = req.params;

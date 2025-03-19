@@ -293,7 +293,7 @@ function ManageGroups() {
                             groups.map((cls) => (
                                 <tr key={`group-${cls.id}`} className="hover:bg-gray-50">
                                     <td className="border p-2">{cls.name}</td>
-                                    <td className="border p-2">{cls.type}</td>
+                                    <td className="border p-2">{cls.type_mapped}</td>
                                     <td className="border p-2">{cls.subject}</td>
                                     <td className="border p-2">{cls.grade}</td>
                                     <td className="border p-2">

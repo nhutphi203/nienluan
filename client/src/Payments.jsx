@@ -1,118 +1,134 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { QRCodeCanvas } from "qrcode.react";
-import "./Fees.css";
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
 
-const Payments = () => {
-    const navigate = useNavigate();
+import 'jspdf-autotable';
+import './Payments.css';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
+
+const Payments = ({ studentId }) => {
     const [fees, setFees] = useState([]);
-    const [isLoading, setIsLoading] = useState(true); // 🔥 State loading
-    const [paymentMethod, setPaymentMethod] = useState("bank");
-    const [showQR, setShowQR] = useState(false);
-    const [user, setUser] = useState(null);
+    const [message, setMessage] = useState('');
 
     useEffect(() => {
-        const storedUser = JSON.parse(localStorage.getItem("user"));
-        if (!storedUser) {
-            navigate("/login"); // Nếu không có người dùng, điều hướng về login
+        if (studentId) {
+            fetchFees();
         } else {
-            setUser(storedUser); // Cập nhật thông tin người dùng từ localStorage
-            fetchFees(storedUser.id); // Gọi API lấy dữ liệu học phí
+            setMessage('Không tìm thấy ID học viên!');
         }
-    }, [navigate]);
+    }, [studentId]);
 
-    const fetchFees = async (studentId) => {
-        setIsLoading(true); // Bắt đầu loading
+    const fetchFees = async () => {
+        setMessage('');
         try {
-            const response = await fetch(`http://localhost:5000/student/fees/${studentId}`);
-            if (!response.ok) throw new Error("Lỗi khi tải học phí");
-            const data = await response.json();
-            setFees(data);
+            const response = await axios.get(`http://localhost:5000/student/fees/${studentId}`);
+            const newFees = Array.isArray(response.data) ? response.data : [];
+            setFees(newFees);
         } catch (error) {
-            console.error(error);
+            console.error('Lỗi khi tải học phí:', error.response || error);
+            setMessage('Có lỗi xảy ra khi tải dữ liệu!');
             setFees([]);
         }
-        setIsLoading(false); // Kết thúc loading
     };
 
-    const handlePayment = () => {
-        alert(`Thanh toán thành công bằng ${paymentMethod === "bank" ? "Chuyển khoản" : "Tiền mặt"}!`);
+    const handlePayment = async () => {
+        if (window.confirm('Bạn có chắc chắn muốn thanh toán học phí?')) {
+            try {
+                const response = await axios.post(`http://localhost:5000/student/pay`, { studentId });
+                if (response.data.success) {
+                    setMessage('Thanh toán thành công!');
+                    fetchFees();
+                } else {
+                    setMessage('Thanh toán thất bại!');
+                }
+            } catch (error) {
+                console.error('Lỗi thanh toán:', error);
+                setMessage('Có lỗi xảy ra khi thanh toán!');
+            }
+        }
     };
 
-    const generateQRValue = () => {
-        const totalAmount = fees.reduce((sum, fee) => sum + (fee.remaining || 0), 0);
-        return `BIDV|CTUB${user.id}|HK2, 2024-2025, MSSV${user.id}, So tien ${totalAmount} VNĐ`;
+    // Kiểm tra xem có ít nhất một môn đã thanh toán không
+    const hasPaidCourses = fees.some(fee => fee.is_paid);
+
+    const exportToPDF = () => {
+        const doc = new jsPDF();
+        doc.text('Hóa đơn học phí', 14, 10);
+
+        const tableColumn = ['Tên lớp', 'ID lớp', 'Số tiền', 'Trạng thái'];
+        const tableRows = [];
+
+        fees.forEach(fee => {
+            if (fee.is_paid) {  // Chỉ xuất môn đã thanh toán
+                tableRows.push([
+                    fee.class_name || 'Không có tên',
+                    fee.class_id,
+                    `${fee.amount.toLocaleString('vi-VN')} VNĐ`,
+                    'Đã thanh toán'
+                ]);
+            }
+        });
+
+        // Gọi autoTable theo cách mới
+        autoTable(doc, {
+            head: [tableColumn],
+            body: tableRows,
+            startY: 20,
+        });
+
+        doc.save(`HoaDon_${studentId}.pdf`);
     };
 
-    // 🔥 Hiển thị loading khi dữ liệu chưa tải xong
-    if (isLoading) {
-        return <p>🔄 Đang tải dữ liệu...</p>;
-    }
 
     return (
-        <div className="fees-container">
-            <h2>💳 Thanh toán học phí</h2>
-
-            {fees.length === 0 ? (
-                <p>Chưa có dữ liệu học phí.</p>
-            ) : (
-                <>
-                    <table className="fees-table">
-                        <thead>
-                            <tr>
-                                <th>📚 Số môn đăng ký</th>
-                                <th>💰 Tổng học phí</th>
-                                <th>📅 Ngày đóng gần nhất</th>
-                                <th>💳 Đã thanh toán</th>
-                                <th>💸 Còn lại</th>
+        <div className="fee-container">
+            <h2>Thanh toán học phí</h2>
+            <table className="fee-table">
+                <thead>
+                    <tr>
+                        <th>Tên lớp</th>
+                        <th>ID lớp</th>
+                        <th>Số tiền</th>
+                        <th>Trạng thái</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {fees.length > 0 ? (
+                        fees.map(fee => (
+                            <tr key={fee.class_id}>
+                                <td>{fee.class_name || 'Không có tên'}</td>
+                                <td>{fee.class_id}</td>
+                                <td>{fee.amount.toLocaleString('vi-VN')} VNĐ</td>
+                                <td className={fee.is_paid ? 'paid' : 'unpaid'}>
+                                    {fee.is_paid ? 'Đã thanh toán' : 'Chưa thanh toán'}
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            {fees.map((fee) => (
-                                <tr key={fee.id}>
-                                    <td>{fee.subject_count}</td>
-                                    <td>{fee.total_fee?.toLocaleString()} VNĐ</td>
-                                    <td>{fee.latest_pay_at ? new Date(fee.latest_pay_at).toLocaleDateString() : "Chưa đóng"}</td>
-                                    <td>{(fee.already_pay || 0).toLocaleString()} VNĐ</td>
-                                    <td>{(fee.remaining || 0).toLocaleString()} VNĐ</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-
-                    {/* 🔥 Khu vực thanh toán */}
-                    {fees.some(fee => fee.remaining > 0) && (
-                        <div className="payment-section">
-                            <h3>🔹 Khu vực thanh toán</h3>
-                            <p>Tổng số tiền cần thanh toán: <strong>{fees.reduce((sum, fee) => sum + (fee.remaining || 0), 0).toLocaleString()} VNĐ</strong></p>
-
-                            <label>Chọn phương thức thanh toán:</label>
-                            <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
-                                <option value="bank">💳 Chuyển khoản</option>
-                                <option value="cash">💵 Tiền mặt</option>
-                            </select>
-
-                            <button className="pay-button" onClick={handlePayment}>Xác nhận thanh toán</button>
-
-                            {/* 🔥 Nút hiển thị QR */}
-                            <button className="qr-button" onClick={() => setShowQR(!showQR)}>
-                                {showQR ? "Ẩn QR Code" : "🔍 Hiển thị QR Code"}
-                            </button>
-
-                            {/* 🔥 Hiển thị QR Code nếu `showQR = true` */}
-                            {showQR && (
-                                <div className="qr-container">
-                                    <h3>📌 Nộp học phí qua ngân hàng BIDV</h3>
-                                    <p><strong>Ngân hàng:</strong> BIDV</p>
-                                    <p><strong>Mã giao dịch:</strong> CTUB{user.id}1741590453</p>
-                                    <p><strong>Mô tả:</strong> HK2, 2024-2025, MSSV{user.id}, Số tiền {fees.reduce((sum, fee) => sum + (fee.remaining || 0), 0).toLocaleString()} VNĐ</p>
-                                    <QRCodeCanvas value={generateQRValue()} size={200} />
-                                </div>
-                            )}
-                        </div>
+                        ))
+                    ) : (
+                        <tr>
+                            <td colSpan="4">Không có dữ liệu học phí</td>
+                        </tr>
                     )}
-                </>
+                </tbody>
+            </table>
+
+            <button
+                className={`pay-button ${!fees.some(fee => !fee.is_paid) ? 'disabled' : ''}`}
+                onClick={handlePayment}
+                disabled={!fees.some(fee => !fee.is_paid)}
+            >
+                Xác nhận thanh toán
+            </button>
+
+            {/* Nút Xuất PDF chỉ hiển thị nếu có ít nhất một môn đã thanh toán */}
+            {hasPaidCourses && (
+                <button className="pdf-button" onClick={exportToPDF}>
+                    Xuất hóa đơn PDF
+                </button>
             )}
+
+            {message && <div className="message">{message}</div>}
         </div>
     );
 };

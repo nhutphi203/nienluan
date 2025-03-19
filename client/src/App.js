@@ -26,7 +26,10 @@ import SendNotification from "./SendNotification";
 import Notifications from "./Notifications";
 import RegisterGroup from "./RegisterGroup";
 import Payments from "./Payments";
-
+import TeacherClassRegister from "./TeacherClassRegister";
+import Documents from "./Documents";
+import StudentList from "./StudentList";
+import TeacherList from "./TeacherList";
 function App() {
   const [user, setUser] = useState(null);
 
@@ -72,7 +75,12 @@ function App() {
         <Route path="/send-notification" element={<SendNotification />} />
         <Route path="/notifications" element={user ? <Notifications user={user} /> : <Navigate to="/login" />} />
         <Route path="/register-group" element={<RegisterGroup />} />
-        <Route path="/payments" element={<Payments />} />
+        <Route path="/payments" element={<Payments studentId={user?.id} />} />
+        <Route path="/register-class" element={<TeacherClassRegister />} />
+        <Route path="/documents" element={<Documents />} />
+        <Route path="/student-list" element={<StudentList />} />
+        <Route path="/teachers" element={<TeacherList />} />
+
       </Routes>
     </Router>
   );

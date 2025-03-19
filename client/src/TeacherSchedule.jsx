@@ -1,41 +1,33 @@
-import { useEffect, useState } from 'react';
-import axios from 'axios';
+import { useEffect, useState } from "react";
+import axios from "axios";
 
 const TeacherSchedule = () => {
     const [schedule, setSchedule] = useState([]);
     const [teacherId, setTeacherId] = useState(null);
 
-    // Function to fetch teacher schedule
     const fetchTeacherSchedule = async () => {
         try {
-            const response = await axios.get(`http://localhost:5000/teacher/schedule/${teacherId}`);
+            const response = await axios.get(`http://localhost:5000/teacher/teacher/classes/${teacherId}`);
+
+            console.log("📅 Dữ liệu lịch dạy nhận được:", response.data); // Log dữ liệu API
             setSchedule(response.data);
         } catch (error) {
-            console.error("Error fetching teacher schedule", error);
+            console.error("❌ Lỗi khi lấy lịch giảng dạy:", error);
         }
     };
 
     useEffect(() => {
         const user = JSON.parse(localStorage.getItem("user"));
         if (user && user.id) {
-            setTeacherId(user.id);  // Set teacher ID from local storage
+            setTeacherId(user.id); // Lấy ID giáo viên từ localStorage
         }
     }, []);
 
     useEffect(() => {
         if (teacherId) {
-            fetchTeacherSchedule();  // Fetch schedule when teacherId is available
+            fetchTeacherSchedule(); // Gọi API khi có teacherId
         }
     }, [teacherId]);
-
-    // Function to format the date in "DD-MM-YYYY" format
-    const formatDate = (dateString) => {
-        const date = new Date(dateString);
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear();
-        return `${day}-${month}-${year}`;
-    };
 
     return (
         <div className="schedule-container">
@@ -47,24 +39,21 @@ const TeacherSchedule = () => {
                 <table className="schedule-table">
                     <thead>
                         <tr>
-                            <th>📅 Ngày học</th>
-                            <th>📚 Tên nhóm</th>
-                            <th>📆 Ngày trong tuần</th>
-                            <th>⏰ Giờ bắt đầu</th>
-                            <th>⏰ Giờ kết thúc</th>
-                            <th>🏫 Phòng học</th>
-
+                            <th>📚 Tên lớp</th>
+                            <th>📖 Loại lớp</th>
+                            <th>🎓 Khối</th>
+                            <th>👨‍🎓 Số học viên</th>
+                            <th>📅 Lịch học</th>
                         </tr>
                     </thead>
                     <tbody>
                         {schedule.map((item, index) => (
                             <tr key={index}>
-                                <td>{formatDate(item.schedule_date)}</td> {/* Format the date here */}
-                                <td>{item.group_name}</td>
-                                <td>{item.date_of_week}</td>
-                                <td>{item.start_at}</td>
-                                <td>{item.end_at}</td>
-                                <td>{item.classroom_name}</td>
+                                <td>{item.name}</td> {/* Tên lớp */}
+                                <td>{item.type_mapped}</td> {/* Loại lớp đã được ánh xạ */}
+                                <td>{item.grade}</td> {/* Khối lớp */}
+                                <td>{item.current_student} / {item.max_student}</td> {/* Số học viên */}
+                                <td>{item.schedule}</td> {/* Lịch học */}
                             </tr>
                         ))}
                     </tbody>
