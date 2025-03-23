@@ -154,6 +154,26 @@ top: -40px;
     position: relative; /* Thêm position để top có hiệu lực */
     top: -70px; /* Giảm bớt khoảng cách */
 }
+.dark-chart {
+    background-color: #1e1e1e;
+    color: white;
+}
+
+body.dark-mode {
+    background-color: #121212;
+    color: white;
+}
+
+.dark-mode .schedule-table {
+    background-color: #222;
+    color: white;
+}
+
+.dark-mode .cancel-btn {
+    background-color: #ff4444;
+    color: white;
+}
+
 
 .dashboard h2 {
     font-size: 26px;

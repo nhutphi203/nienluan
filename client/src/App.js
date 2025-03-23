@@ -30,6 +30,7 @@ import TeacherClassRegister from "./TeacherClassRegister";
 import Documents from "./Documents";
 import StudentList from "./StudentList";
 import TeacherList from "./TeacherList";
+import Courses from "./Courses";
 function App() {
   const [user, setUser] = useState(null);
 
@@ -80,7 +81,7 @@ function App() {
         <Route path="/documents" element={<Documents />} />
         <Route path="/student-list" element={<StudentList />} />
         <Route path="/teachers" element={<TeacherList />} />
-
+        <Route path="/courses" element={<Courses />} />
       </Routes>
     </Router>
   );

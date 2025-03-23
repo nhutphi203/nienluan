@@ -1,6 +1,7 @@
 import mysql from "mysql";
 import express from "express";
 const router = express.Router();
+import bcrypt from "bcrypt";
 
 
 // Kết nối database sử dụng pool
@@ -84,7 +85,89 @@ GROUP BY c.id, c.name, c.subject, c.type, grade, c.max_student;
         res.json(formattedResults);
     });
 });
+router.post("/update-profile", async (req, res) => {
+    console.log("🔍 Dữ liệu nhận từ frontend:", req.body); // Debug dữ liệu từ client
 
+    const { id, fullName, email, phone } = req.body;
+    if (!id || !fullName || !email) {
+        return res.status(400).json({ message: "Thiếu thông tin bắt buộc!" });
+    }
+
+    try {
+        db.query("SELECT fullName, email, phone FROM users WHERE id = ?", [id], (err, rows) => {
+            if (err) {
+                console.error("❌ Lỗi khi lấy dữ liệu:", err);
+                return res.status(500).json({ message: "Lỗi máy chủ!" });
+            }
+            if (rows.length === 0) {
+                return res.status(404).json({ message: "Không tìm thấy người dùng!" });
+            }
+
+            const oldData = rows[0];
+            console.log("📌 Dữ liệu cũ:", oldData);
+
+            // Nếu không có thay đổi thì trả về thông báo
+            if (oldData.fullName === fullName && oldData.email === email && oldData.phone === phone) {
+                return res.status(200).json({ message: "Không có thay đổi nào!" });
+            }
+
+            const query = "UPDATE users SET fullName = ?, email = ?, phone = NULLIF(?, '') WHERE id = ?";
+            db.query(query, [fullName, email, phone, id], (err, result) => {
+                if (err) {
+                    console.error("❌ Lỗi khi cập nhật:", err);
+                    return res.status(500).json({ message: "Lỗi máy chủ!" });
+                }
+
+                console.log("🔄 Kết quả UPDATE:", result);
+
+                if (result.changedRows === 0) {
+                    return res.status(200).json({ message: "Dữ liệu không thay đổi!" });
+                }
+
+                console.log("✅ Cập nhật thành công cho ID:", id);
+                res.json({ message: "Cập nhật thành công!", fullName, email, phone });
+            });
+        });
+
+    } catch (error) {
+        console.error("❌ Lỗi server:", error);
+        res.status(500).json({ message: "Lỗi máy chủ!" });
+    }
+});
+router.post("/update-password", (req, res) => {
+    const { id, oldPassword, newPassword } = req.body;
+
+    db.query("SELECT password FROM users WHERE id = ?", [id], async (err, rows) => {
+        if (err) {
+            console.error("🔥 Lỗi server:", err);
+            return res.status(500).json({ message: "Lỗi server!" });
+        }
+
+        if (!rows.length) {
+            return res.status(404).json({ message: "Người dùng không tồn tại!" });
+        }
+
+        const hashedPassword = rows[0].password;
+
+        if (!(await bcrypt.compare(oldPassword, hashedPassword))) {
+            return res.status(400).json({ message: "Mật khẩu cũ không đúng!" });
+        }
+
+        if (await bcrypt.compare(newPassword, hashedPassword)) {
+            return res.status(400).json({ message: "Mật khẩu mới không được giống mật khẩu cũ!" });
+        }
+
+        const newHashedPassword = await bcrypt.hash(newPassword, 10);
+
+        db.query("UPDATE users SET password = ? WHERE id = ?", [newHashedPassword, id], (err) => {
+            if (err) {
+                console.error("🔥 Lỗi cập nhật mật khẩu:", err);
+                return res.status(500).json({ message: "Lỗi server!" });
+            }
+            return res.json({ message: "✅ Đổi mật khẩu thành công!" });
+        });
+    });
+});
 
 router.get("/classes/:userId", (req, res) => {
     const { userId } = req.params;

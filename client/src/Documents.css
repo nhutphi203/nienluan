@@ -77,3 +77,97 @@ button {
 button:hover {
     background: #cc0000;
 }
+/* Documents.css */
+
+.courses-container {
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 20px;
+    background: #f9f9f9;
+    border-radius: 10px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+    font-family: "Arial", sans-serif;
+}
+
+h2, h3 {
+    text-align: center;
+    color: #333;
+}
+
+ul {
+    list-style: none;
+    padding: 0;
+}
+
+.notification-item {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+    margin-bottom: 10px;
+    transition: transform 0.2s ease-in-out;
+}
+
+.notification-item:hover {
+    transform: translateY(-3px);
+}
+
+.notification-item p {
+    margin: 5px 0;
+}
+
+.file-attachment a {
+    color: #007bff;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.file-attachment a:hover {
+    text-decoration: underline;
+}
+
+/* Form Thêm Thông Báo */
+.add-announcement {
+    background: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+    margin-top: 20px;
+}
+
+.add-announcement input,
+.add-announcement textarea {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+}
+
+.add-announcement button {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.3s ease-in-out;
+}
+
+.add-announcement button:hover {
+    background: #0056b3;
+}
+
+/* Responsive Design */
+@media (max-width: 600px) {
+    .courses-container {
+        padding: 15px;
+    }
+
+    .notification-item {
+        padding: 10px;
+    }
+}

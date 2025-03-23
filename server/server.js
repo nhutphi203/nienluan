@@ -95,26 +95,23 @@ const upload = multer({
         cb(null, true);
     },
 });
-
 app.post("/upload", upload.single("file"), (req, res) => {
-    console.log("🔍 Debug req.file:", req.file); // Kiểm tra file nhận được
+    console.log("🔍 Debug req.file:", req.file);
 
     if (!req.file) {
         return res.status(400).json({ error: "Không có tệp được tải lên!" });
     }
 
-    const classId = req.body.class_id;
+    const { class_id, teacher_id, notification_id } = req.body;  // Nhận thêm notification_id
     const filePath = "/uploads/" + req.file.filename;
+    const title = req.file.originalname; // Lưu tên gốc của file
 
-    console.log("✅ Đã nhận file:", req.file.filename, "Lưu vào:", filePath);
+    console.log("✅ Nhận file:", title, "Lưu vào:", filePath);
+    console.log("📢 Notification ID:", notification_id);
 
-    const teacherId = req.body.teacher_id; // Nhận từ request body
-    console.log("Teacher ID:", teacherId);
+    const sql = "INSERT INTO documents (class_id, teacher_id, title, file_path, notification_id) VALUES (?, ?, ?, ?, ?)";
 
-
-    const sql = "INSERT INTO documents (class_id, title, file_path, teacher_id) VALUES (?, ?, ?, ?)";
-
-    db.query(sql, [classId, req.file.originalname, filePath, teacherId], (err) => {
+    db.query(sql, [class_id, teacher_id, title, filePath, notification_id], (err) => {
         if (err) {
             console.error("🔥 Lỗi MySQL:", err);
             return res.status(500).json({ error: "Lỗi khi lưu tài liệu vào database" });
@@ -303,9 +300,7 @@ app.get("/teachers", (req, res) => {
 
 
 
-
-// 🚀 API ĐĂNG NHẬP
-app.post("/login", (req, res) => {
+app.post("/login", async (req, res) => {
     const { username, password } = req.body;
     console.log("Yêu cầu đăng nhập:", username, password);
 
@@ -320,28 +315,18 @@ app.post("/login", (req, res) => {
             return res.status(400).json({ error: "Sai tài khoản hoặc mật khẩu" });
         }
 
-        // Lấy thông tin user từ database
         const user = results[0];
 
-        // 🛠 So sánh mật khẩu đã mã hóa
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.status(400).json({ error: "Sai tài khoản hoặc mật khẩu" });
-        }
+        // 🔥 Kiểm tra mật khẩu từ database
+        console.log("Mật khẩu trong database:", user.password);
 
-        res.json({
-            message: "Đăng nhập thành công",
-            user: {
-                id: user.id,
-                fullName: user.fullName,
-                username: user.username,
-                phone: user.phone,
-                role: user.role,
-                email: user.email
-            }
-        });
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) return res.status(400).json({ error: "Sai tài khoản hoặc mật khẩu" });
+
+        res.json({ message: "Đăng nhập thành công", user });
     });
 });
+
 app.get("/profile", (req, res) => {
     const userId = req.query.id; // Lấy user ID từ query
 

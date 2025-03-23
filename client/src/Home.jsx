@@ -40,6 +40,12 @@ const Home = ({ user, token }) => {
             toast.error("⚠️ Không thể tải lịch dạy!");
         }
     };
+    useEffect(() => {
+        const savedMode = localStorage.getItem("darkMode") === "true"; // Chuyển đổi chuỗi thành boolean
+        setDarkMode(savedMode);
+        document.body.classList.toggle("dark-mode", savedMode);
+    }, []);
+
     const handleCancelTeaching = async (classId) => {
         try {
             const response = await axios.delete(`http://localhost:5000/teacher/unregister-class/${currentUser.id}/${classId}`);
@@ -148,9 +154,12 @@ const Home = ({ user, token }) => {
     };
 
     const toggleDarkMode = () => {
-        setDarkMode(!darkMode);
-        document.body.classList.toggle("dark-mode");
+        const newDarkMode = !darkMode;
+        setDarkMode(newDarkMode);
+        document.body.classList.toggle("dark-mode", newDarkMode);
+        localStorage.setItem("darkMode", newDarkMode); // Lưu vào localStorage
     };
+
     const fetchNews = async () => {
         try {
             const response = await axios.get("http://localhost:5000/news/news");
@@ -241,7 +250,6 @@ const Home = ({ user, token }) => {
         hv: [
             { path: "/grades", label: "Điểm số", icon: <FaBell /> },
             { path: "/fees", label: "Học phí", icon: <FaCog /> },
-            { path: "/makeup-classes", label: "Học bù", icon: <FaUser /> },
             { path: "/register-group", label: "Đăng ký nhóm học", icon: <FaCalendarAlt /> },
             { path: "/documents", label: "Tài liệu", icon: <FaFileAlt /> }, // ✅ Thêm mục này
             { path: "/student-list", label: "Danh sách học viên", icon: <FaUsers /> },
@@ -249,7 +257,6 @@ const Home = ({ user, token }) => {
         gv: [
             { path: "/teaching-schedule", label: "Lịch giảng dạy", icon: <FaHome /> },
             { path: "/student-grades-input", label: "Chấm điểm học sinh", icon: <FaBell /> },
-            { path: "/attendance", label: "Chấm công", icon: <FaCog /> },
             { path: "/register-class", label: "Đăng ký dạy học", icon: <FaChalkboardTeacher /> },
             { path: "/documents", label: "Tài liệu", icon: <FaFileAlt /> }, // ✅ Thêm mục này
         ],
@@ -258,19 +265,12 @@ const Home = ({ user, token }) => {
             { path: "/finance-reports", label: "Báo cáo tài chính", icon: <FaBell /> },
             { path: "/manage-teachers", label: "Quản lý giáo viên", icon: <FaCog /> },
             { path: "/manage-students", label: "Quản lý học viên", icon: <FaUser /> },
-            { path: "/manage-schedules", label: "Quản lý lịch học", icon: <FaHome /> },
             { path: "/tuition-salary", label: "Quản lý doanh thu", icon: <FaBell /> },
-            { path: "/reports-statistics", label: "Báo cáo & Thống kê", icon: <FaCog /> },
         ],
         ad: [
             { path: "/system-management", label: "Quản lý hệ thống", icon: <FaHome /> },
-            { path: "/revenue-salary", label: "Doanh thu & lương", icon: <FaBell /> },
-            { path: "/attendance-reports", label: "Báo cáo chuyên cần", icon: <FaCog /> },
             { path: "/user-management", label: "Quản lý người dùng", icon: <FaUser /> },
-            { path: "/role-management", label: "Phân quyền hệ thống", icon: <FaCog /> },
             { path: "/backup-restore", label: "Sao lưu & Khôi phục", icon: <FaDatabase /> },
-            { path: "/send-notification", label: "Gửi thông báo", icon: <FaEnvelope /> },
-            { path: "/finance-reports", label: "Báo cáo tài chính", icon: <FaChartBar /> },
         ],
     };
 
@@ -282,9 +282,7 @@ const Home = ({ user, token }) => {
                     <span className="nav-item" onClick={() => navigate("/home")} title="Trang chủ">
                         <FaHome />
                     </span>
-                    <span className="nav-item" onClick={() => navigate("/notifications")} title="Thông báo">
-                        <FaBell />
-                    </span>
+
                     <span className="nav-item" onClick={() => navigate("/courses")} title="Khóa học">
                         <FaBook />
                     </span>
@@ -299,9 +297,7 @@ const Home = ({ user, token }) => {
                             <FaUser />
                         </span>
                     )}
-                    <span className="nav-item" onClick={() => navigate("/settings")} title="Cài đặt">
-                        <FaCog />
-                    </span>
+
                     <span className="nav-item" onClick={toggleDarkMode} title="Chế độ tối">
                         {darkMode ? <FaSun /> : <FaMoon />}
                     </span>
@@ -350,7 +346,7 @@ const Home = ({ user, token }) => {
                         currentUser.role === "ad" || currentUser.role === "cm" ? (
                             <section className="dashboard-content">
                                 <h2>Thống kê doanh thu</h2>
-                                <div className="chart-container">
+                                <div className={darkMode ? "dark-chart" : ""}>
                                     <Revenue />
                                 </div>
                             </section>
