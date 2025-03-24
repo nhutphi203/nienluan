@@ -304,10 +304,7 @@ const Home = ({ user, token }) => {
                     <span className="nav-item logout" onClick={handleLogout} title="Đăng xuất">
                         <FaSignOutAlt />
                     </span>
-                    <span className="nav-item search">
-                        <FaSearch />
-                        <input type="text" placeholder="Tìm kiếm..." className="search-input" />
-                    </span>
+
                 </div>
             </nav>
             <h2>Tin tức mới nhất</h2>
@@ -360,8 +357,39 @@ const Home = ({ user, token }) => {
                     )}
 
 
+
+
+
                 </main>
             </div>
+            <footer className="footer">
+                <div className="footer-container">
+                    {/* Thông tin liên hệ */}
+                    <div className="contact-info">
+                        <p>🏠 Khu II, Đ. 3 Tháng 2, Xuân Khánh, Ninh Kiều, Cần Thơ</p>
+                        <p>📞 <a href="tel:0123456789">07028124240</a></p>
+                        <p>📧 <a href="mailto:contact@trungtamabc.com">contact@trungtamquanly.com</a></p>
+                    </div>
+
+                    {/* Mạng xã hội */}
+                    <div className="social-media">
+                        <p>Liên hệ với chúng tôi</p>
+                        <a href="https://facebook.com" target="_blank" rel="noopener noreferrer">
+                            <img src="/images/facebook.png" alt="Facebook" />
+                        </a>
+                        <a href="https://zalo.me" target="_blank" rel="noopener noreferrer">
+                            <img src="/images/tải xuống.png" alt="Zalo" />
+                        </a>
+                        <a href="https://youtube.com" target="_blank" rel="noopener noreferrer">
+                            <img src="/images/youtube.png" alt="YouTube" />
+                        </a>
+                    </div>
+                </div>
+
+                <p className="copyright">© 2025 Trung tâm Gia Sư ABC</p>
+            </footer>
+
+
         </div>
     );
 };

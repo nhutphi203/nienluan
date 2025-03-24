@@ -31,6 +31,8 @@ import Documents from "./Documents";
 import StudentList from "./StudentList";
 import TeacherList from "./TeacherList";
 import Courses from "./Courses";
+import "antd/dist/reset.css";
+
 function App() {
   const [user, setUser] = useState(null);
 

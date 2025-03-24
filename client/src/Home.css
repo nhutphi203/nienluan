@@ -1,4 +1,4 @@
-/* Home.css - Giao diện hiện đại hơn */
+/* Home.css - Giao diện tối ưu */
 * {
     margin: 0;
     padding: 0;
@@ -10,14 +10,7 @@ body, html {
     height: 100%;
     width: 100%;
     background-color: #ecf0f1;
-}
-
-.home-container {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    gap: 20px; /* Tạo khoảng cách đều giữa các section */
-top: -40px;
+    transition: background 0.3s ease-in-out;
 }
 
 /* Navbar */
@@ -34,14 +27,11 @@ top: -40px;
     color: white;
     box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.15);
     z-index: 1000;
-    border-radius: 8px; /* Bo góc navbar */
-    margin-bottom: 15px; /* Tạo khoảng cách với phần bên dưới */
 }
 
 .navbar h1 {
     font-size: 22px;
     font-weight: bold;
-    margin-left: 18px;
     flex: 1;
 }
 
@@ -49,14 +39,14 @@ top: -40px;
 .navbar-buttons {
     display: flex;
     align-items: center;
-    gap: 12px; /* Giữ khoảng cách hợp lý hơn */
+    gap: 12px;
 }
 
 .nav-item {
     cursor: pointer;
-    padding: 8px 14px; /* Tăng padding nhẹ */
+    padding: 8px 14px;
     border-radius: 6px;
-    transition: all 0.3s ease-in-out;
+    transition: all 0.3s;
     font-weight: 500;
     background: rgba(255, 255, 255, 0.15);
     display: flex;
@@ -72,68 +62,24 @@ top: -40px;
     transform: scale(1.05);
 }
 
-/* Search Box */
-.search {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255, 255, 255, 0.2);
-    padding: 6px 12px;
-    border-radius: 6px;
-    transition: all 0.3s ease-in-out;
-    width: 220px;
-    height: 38px;
-}
-
-.search-input {
-    border: none;
-    outline: none;
-    background: transparent;
-    color: white;
-    flex: 1;
-    font-size: 14px;
-    height: 100%;
-    padding: 0 6px;
-}
-
-.search:hover {
-    background: rgba(255, 255, 255, 0.3);
-}
-
-/* Main Content */
-.main-content {
-    display: flex;
-    flex-grow: 1;
-    height: calc(100vh - 60px);
-    margin-top: 60px;
-}
-/* Căn chỉnh Sidebar */
+/* Sidebar */
 .sidebar {
     width: 260px;
-    border-radius: 12px; /* Bo góc */
+    border-radius: 12px;
     padding: 20px;
     box-shadow: 2px 0px 10px rgba(0, 0, 0, 0.1);
-    position: relative;
-    top: -50px; /* Đẩy sidebar lên trên */
     color: white;
     background: linear-gradient(135deg, #34495e, #2c3e50);
-
-}
-
-
-
-.sidebar ul {
-    list-style-type: none;
-    padding: 0;
+    transition: transform 0.3s ease-in-out;
 }
 
 .sidebar-item {
-    padding: 14px 18px; /* Tăng padding cho dễ nhìn */
+    padding: 14px 18px;
     margin: 10px 0;
     cursor: pointer;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 8px;
-    transition: all 0.3s ease-in-out;
+    transition: all 0.3s;
     font-size: 15px;
 }
 
@@ -141,32 +87,50 @@ top: -40px;
     background: #1abc9c;
     transform: translateX(5px);
 }
+.main-content {
+    display: flex;
+    flex-direction: row;
+    gap: 20px; /* Khoảng cách giữa sidebar và dashboard */
+    padding: 20px;
+    margin-top: 0px; /* Tránh navbar che khuất */
+}
+
+.sidebar {
+    width: 250px; /* Độ rộng cố định của sidebar */
+    min-width: 200px;
+    padding: 15px;
+    border-radius: 8px;
+}
 
 .dashboard {
-    flex-grow: 1;
-    padding: 30px;
+    flex-grow: 1; /* Cho phép phần này mở rộng */
     background: white;
-    border-radius: 15px;
-    margin: 20px;
+    padding: 20px;
+    border-radius: 12px;
     box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
     overflow-y: auto;
-    height: 100%;
-    position: relative; /* Thêm position để top có hiệu lực */
-    top: -70px; /* Giảm bớt khoảng cách */
-}
-.dark-chart {
-    background-color: #1e1e1e;
-    color: white;
+    max-height: calc(100vh - 80px); /* Đảm bảo không tràn màn hình */
 }
 
+/* Căn chỉnh lịch học và lịch dạy */
+.dashboard-content, .teaching-schedule {
+    margin-top: 20px;
+}
+
+/* Dark Mode */
 body.dark-mode {
     background-color: #121212;
     color: white;
 }
 
-.dark-mode .schedule-table {
+.dark-mode .dashboard,
+.dark-mode .sidebar {
     background-color: #222;
     color: white;
+}
+
+.dark-mode .nav-item:hover {
+    background: rgba(255, 255, 255, 0.5);
 }
 
 .dark-mode .cancel-btn {
@@ -174,6 +138,17 @@ body.dark-mode {
     color: white;
 }
 
+.dashboard {
+    flex-grow: 1;
+    width: 100%; /* Đảm bảo full width */
+    margin-right: auto; /* Căn trái, tránh thừa khoảng trống bên phải */
+}
+
+.schedule-container {
+    flex-grow: 1;
+    width: 100%;
+    margin-right: auto;
+}
 
 .dashboard h2 {
     font-size: 26px;
@@ -245,13 +220,40 @@ body.dark-mode {
         padding: 20px;
     }
 }
-.schedule-container {
-    flex-grow: 1;
-    padding: 30px;
-    background: white;
-    border-radius: 15px;
-    margin: 20px;
-    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
-    overflow-y: auto;
-    height: 100%;
+.footer {
+    background: #2c3e50;
+    color: #fff;
+    text-align: center;
+    padding: 20px 0;
 }
+
+.footer-container {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.contact-info, .social-media {
+    margin: 10px;
+    color: #ddd;
+}
+
+.social-media a {
+    margin: 0 10px;
+}
+.social-media h3 {
+    color: #ddd;
+}
+.social-media img {
+    width: 40px; /* Thay đổi kích thước icon */
+    height: 40px;
+    object-fit: contain; /* Giữ tỉ lệ hình ảnh */
+    margin: 0 10px; /* Khoảng cách giữa các icon */
+    transition: transform 0.2s ease-in-out;
+  }
+  
+  .social-media img:hover {
+    transform: scale(1.1); /* Hiệu ứng khi hover */
+  }
+  
