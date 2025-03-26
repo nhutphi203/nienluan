@@ -102,8 +102,6 @@ router.delete('/group/:id', async (req, res) => {
 });
 
 
-
-
 router.post("/group", async (req, res) => {
     try {
         const { name, subject, type, grade, max_student, period_time_ids } = req.body;
@@ -302,6 +300,27 @@ router.get("/students", async (req, res) => {
         res.status(500).json({ error: "Lỗi khi lấy danh sách học viên" });
     }
 });
+router.get("/students/paid", async (req, res) => {
+    try {
+        const [rows] = await db.query(`
+            SELECT 
+                u.id, 
+                u.fullName, 
+                u.phone, 
+                COALESCE(SUM(spf.already_pay), 0) AS total_pay, 
+                MAX(spf.latest_pay_at) AS latest_pay_at
+            FROM student_pay_fee spf
+            JOIN users u ON spf.student_id = u.id
+            WHERE spf.already_pay > 0
+            GROUP BY u.id, u.fullName, u.phone
+            ORDER BY latest_pay_at DESC
+        `);
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 
 router.get("/revenue", async (req, res) => {
     try {

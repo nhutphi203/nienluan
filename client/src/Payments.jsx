@@ -31,23 +31,29 @@ const Payments = ({ studentId }) => {
             setFees([]);
         }
     };
-
     const handlePayment = async () => {
-        if (window.confirm('Bạn có chắc chắn muốn thanh toán học phí?')) {
+        console.log("Student ID:", studentId); // Kiểm tra studentId có bị undefined không
+
+        if (window.confirm("Bạn có chắc chắn muốn thanh toán học phí?")) {
             try {
-                const response = await axios.post(`http://localhost:5000/student/pay`, { studentId });
+                const response = await axios.post("http://localhost:5000/student/pay", { studentId });
+
                 if (response.data.success) {
-                    setMessage('Thanh toán thành công!');
-                    fetchFees();
+                    setMessage("Thanh toán thành công!");
+                    fetchFees(); // Load lại danh sách học phí
                 } else {
-                    setMessage('Thanh toán thất bại!');
+                    setMessage("Thanh toán thất bại!");
                 }
             } catch (error) {
-                console.error('Lỗi thanh toán:', error);
-                setMessage('Có lỗi xảy ra khi thanh toán!');
+                console.error("Lỗi thanh toán:", error);
+                console.error("Chi tiết lỗi từ server:", error.response?.data); // Log lỗi chi tiết từ backend
+
+                setMessage("Có lỗi xảy ra khi thanh toán!");
             }
         }
     };
+
+
 
     // Kiểm tra xem có ít nhất một môn đã thanh toán không
     const hasPaidCourses = fees.some(fee => fee.is_paid);

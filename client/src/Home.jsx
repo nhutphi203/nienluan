@@ -307,7 +307,6 @@ const Home = ({ user, token }) => {
 
                 </div>
             </nav>
-            <h2>Tin tức mới nhất</h2>
             <div className="news-ticker">
                 <div className="news-content">
                     {news.length > 0 ? (

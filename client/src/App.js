@@ -32,6 +32,7 @@ import StudentList from "./StudentList";
 import TeacherList from "./TeacherList";
 import Courses from "./Courses";
 import "antd/dist/reset.css";
+import TuitionSalary from "./TuitionSalary";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -71,8 +72,6 @@ function App() {
         <Route path="/manage-teachers" element={<ManageTeachers />} />
         <Route path="/manage-students" element={<ManageStudents />} />
         <Route path="/manage-schedules" element={<ManageSchedules />} />
-        <Route path="/manage-fees-salaries" element={<ManageFeesSalaries />} />
-        <Route path="/manage-notifications" element={<ManageNotifications />} />
         <Route path="/system-management" element={<SystemManagement />} /> {/* ✅ Thêm đường dẫn cho System Management */}
         <Route path="/backup-restore" element={<BackupRestore />} />
         <Route path="/send-notification" element={<SendNotification />} />
@@ -84,6 +83,7 @@ function App() {
         <Route path="/student-list" element={<StudentList />} />
         <Route path="/teachers" element={<TeacherList />} />
         <Route path="/courses" element={<Courses />} />
+        <Route path="/tuition-salary" element={<TuitionSalary />}></Route>
       </Routes>
     </Router>
   );

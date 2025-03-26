@@ -33,6 +33,8 @@ body, html {
     font-size: 22px;
     font-weight: bold;
     flex: 1;
+    margin-left: 15px;
+    margin-top:7px;
 }
 
 /* Navbar Buttons */
