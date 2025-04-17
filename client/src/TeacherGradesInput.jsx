@@ -106,43 +106,51 @@ const TeacherGradeInput = () => {
 
 
 
+            {selectedClass ? (
+                students.length > 0 ? (
+                    <table className="teacher-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Họ Tên</th>
+                                <th>Nhập Điểm</th>
+                                <th>Xác Nhận</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {students.map(student => (
+                                <tr key={student.id}>
+                                    <td>{student.id}</td>
+                                    <td>{student.fullName || "(Không có tên)"}</td>
+                                    <td>
+                                        <input
+                                            type="text"
+                                            className="teacher-input"
+                                            value={scores[student.id] || ""}
+                                            onChange={(e) => handleScoreChange(student.id, e.target.value)}
+                                            placeholder="1-9"
+                                            maxLength={2}
+                                        />
+                                    </td>
+                                    <td>
+                                        <button
+                                            onClick={() => handleSubmit(student.id)}
+                                            className="teacher-btn"
+                                        >
+                                            Xác nhận
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                ) : (
+                    <p className="teacher-empty">Không có học viên trong nhóm này.</p>
+                )
+            ) : (
+                <p className="teacher-empty">Vui lòng chọn nhóm để hiển thị danh sách học viên.</p>
+            )}
 
-            <table className="teacher-table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Họ Tên</th>
-                        <th>Nhập Điểm</th>
-                        <th>Xác Nhận</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {students.map(student => (
-                        <tr key={student.id}>
-                            <td>{student.id}</td>
-                            <td>{student.fullName || "(Không có tên)"}</td>
-                            <td>
-                                <input
-                                    type="text"
-                                    className="teacher-input"
-                                    value={scores[student.id] || ""}
-                                    onChange={(e) => handleScoreChange(student.id, e.target.value)}
-                                    placeholder="1-9"
-                                    maxLength={2}
-                                />
-                            </td>
-                            <td>
-                                <button
-                                    onClick={() => handleSubmit(student.id)}
-                                    className="teacher-btn"
-                                >
-                                    Xác nhận
-                                </button>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
         </div>
     );
 };

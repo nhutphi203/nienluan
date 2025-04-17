@@ -1,0 +1,102 @@
+/* Tổng thể container */
+.student-container {
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 24px;
+    background-color: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    font-family: 'Segoe UI', sans-serif;
+  }
+  
+  /* Tiêu đề */
+  .student-title {
+    text-align: center;
+    font-size: 26px;
+    font-weight: bold;
+    margin-bottom: 24px;
+    color: #333;
+  }
+  
+  /* Nhóm chọn lớp */
+  .student-select-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    font-size: 16px;
+    color: #444;
+  }
+  
+  .student-select-group label {
+    font-weight: 600;
+  }
+  
+  .student-select-group select {
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 16px;
+    outline: none;
+    min-width: 200px;
+  }
+  
+  .student-select-group select:focus {
+    border-color: #007bff;
+  }
+  
+  /* Bảng danh sách học viên */
+  .student-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+  }
+  
+  .student-table thead {
+    background-color: #f0f0f0;
+  }
+  
+  .student-table th,
+  .student-table td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+  }
+  
+  .student-table th {
+    font-weight: 600;
+    color: #333;
+  }
+  
+  .student-table tbody tr:hover {
+    background-color: #f9f9f9;
+  }
+  
+  /* Dark mode (nếu có class dark-mode ở body) */
+  body.dark-mode .student-container {
+    background-color: #1e1e2f;
+    color: #f1f1f1;
+  }
+  
+  body.dark-mode .student-title,
+  body.dark-mode .student-select-group label {
+    color: #ffffff;
+  }
+  
+  body.dark-mode .student-table th {
+    background-color: #333;
+    color: #fff;
+  }
+  
+  body.dark-mode .student-table td {
+    color: #ddd;
+    border-bottom: 1px solid #444;
+  }
+  .student-empty {
+    text-align: center;
+    margin-top: 24px;
+    font-style: italic;
+    color: #777;
+    font-size: 16px;
+  }
+  

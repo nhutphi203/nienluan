@@ -17,7 +17,8 @@ const Profile = () => {
     const [oldPassword, setOldPassword] = useState("");
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
-
+    const [passwordPopupMessage, setPasswordPopupMessage] = useState("");
+    const [isPasswordPopupSuccess, setIsPasswordPopupSuccess] = useState(null);
 
     useEffect(() => {
         const storedUser = JSON.parse(localStorage.getItem("user"));
@@ -29,13 +30,30 @@ const Profile = () => {
         }
     }, [navigate]);
     const handleSaveChanges = async () => {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const phoneRegex = /^0\d{9}$/;
+
+        // Kiểm tra các trường thông tin
         if (!editUser.fullName || !editUser.email) {
             setPopupMessage("Vui lòng điền đầy đủ họ tên và email!");
             setIsPopupSuccess(false);
             return;
         }
 
+        if (!emailRegex.test(editUser.email)) {
+            setPopupMessage("Email không hợp lệ! Vui lòng nhập đúng định dạng email.");
+            setIsPopupSuccess(false);
+            return;
+        }
+
+        if (editUser.phone && !phoneRegex.test(editUser.phone)) {
+            setPopupMessage("Số điện thoại không hợp lệ! (Ví dụ: 0912345678)");
+            setIsPopupSuccess(false);
+            return;
+        }
+
         try {
+            // Gửi yêu cầu cập nhật thông tin
             const response = await fetch("http://localhost:5000/student/update-profile", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -50,24 +68,20 @@ const Profile = () => {
             const data = await response.json();
             if (response.ok) {
                 setPopupMessage(data.message || "Cập nhật thành công!");
-                setIsPopupSuccess(true);
-
-                // ✅ Cập nhật `localStorage` với thông tin mới
+                setIsPopupSuccess(true); // Đặt trạng thái thành công
                 const updatedUser = { ...user, fullName: editUser.fullName, email: editUser.email, phone: editUser.phone };
                 localStorage.setItem("user", JSON.stringify(updatedUser));
-                setUser(updatedUser); // Cập nhật state React
-
-                setIsEditOpen(false); // Đóng modal sau khi lưu thành công
+                setUser(updatedUser);
+                setIsEditOpen(false); // Đóng modal chỉnh sửa thông tin
             } else {
                 setPopupMessage(data.message || "Có lỗi xảy ra!");
-                setIsPopupSuccess(false);
+                setIsPopupSuccess(false); // Đặt trạng thái lỗi
             }
         } catch (error) {
             setPopupMessage("Lỗi kết nối đến server!");
-            setIsPopupSuccess(false);
+            setIsPopupSuccess(false); // Đặt trạng thái lỗi
         }
     };
-
 
     const closePopup = () => {
         setIsModalOpen(false);
@@ -80,14 +94,14 @@ const Profile = () => {
     }
     const handlePasswordChanges = async () => {
         if (!oldPassword || !newPassword || !confirmPassword) {
-            setPopupMessage("Vui lòng nhập đầy đủ thông tin!");
-            setIsPopupSuccess(false);
+            setPasswordPopupMessage("Vui lòng nhập đầy đủ thông tin!");
+            setIsPasswordPopupSuccess(false);
             return;
         }
 
         if (newPassword !== confirmPassword) {
-            setPopupMessage("Mật khẩu mới không khớp!");
-            setIsPopupSuccess(false);
+            setPasswordPopupMessage("Mật khẩu mới không khớp!");
+            setIsPasswordPopupSuccess(false);
             return;
         }
 
@@ -97,33 +111,28 @@ const Profile = () => {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     id: user.id,
-                    oldPassword,  // Gửi mật khẩu cũ lên server
+                    oldPassword,
                     newPassword,
                 }),
             });
 
             const data = await response.json();
             if (response.ok) {
-                setPopupMessage("Đổi mật khẩu thành công!");
-                setIsPopupSuccess(true);
-
-                // Đặt lại các ô nhập mật khẩu
+                setPasswordPopupMessage("Đổi mật khẩu thành công!");
+                setIsPasswordPopupSuccess(true);
                 setOldPassword("");
                 setNewPassword("");
                 setConfirmPassword("");
-
-                // Đóng popup sau 2 giây
                 setTimeout(() => setIsModalOpen(false), 2000);
             } else {
-                setPopupMessage(data.message || "Mật khẩu cũ không đúng!");
-                setIsPopupSuccess(false);
+                setPasswordPopupMessage(data.message || "Mật khẩu cũ không đúng!");
+                setIsPasswordPopupSuccess(false);
             }
         } catch (error) {
-            setPopupMessage("Lỗi kết nối đến server!");
-            setIsPopupSuccess(false);
+            setPasswordPopupMessage("Lỗi kết nối đến server!");
+            setIsPasswordPopupSuccess(false);
         }
     };
-
 
 
     return (
@@ -139,16 +148,16 @@ const Profile = () => {
             <button onClick={() => setIsEditOpen(true)} className="edit-btn">📝 Chỉnh sửa</button>
             <button onClick={() => setIsModalOpen(true)} className="change-password-btn">🔑 Đổi mật khẩu</button>
             <button onClick={() => navigate("/home")} className="back-btn">⬅️ Quay lại</button>
-            {/* Đổi mật khẩu sẽ được hiển thị trong DraggablePopup */}
+
             {isModalOpen && (
                 <DraggablePopup>
                     <div className="modal-header popup-header">
                         <h4>Đổi mật khẩu</h4>
                     </div>
                     <div className="modal-body">
-                        {popupMessage && (
-                            <p style={{ color: isPopupSuccess ? "green" : "red" }}>
-                                {popupMessage}
+                        {passwordPopupMessage && (
+                            <p style={{ color: isPasswordPopupSuccess ? "green" : "red" }}>
+                                {passwordPopupMessage}
                             </p>
                         )}
                         <input
@@ -169,27 +178,27 @@ const Profile = () => {
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
                         />
-
                     </div>
                     <div className="modal-footer">
-                        <button
-                            onClick={() => handlePasswordChanges(oldPassword, newPassword, confirmPassword)}
-                            className="confirm-btn"
-                        >
+                        <button onClick={handlePasswordChanges} className="confirm-btn">
                             Xác nhận
                         </button>
-
                         <button onClick={closePopup} className="back-btn">Đóng</button>
                     </div>
-
                 </DraggablePopup>
             )}
+
             {isEditOpen && (
                 <DraggablePopup>
                     <div className="modal-header popup-header">
                         <h4>Chỉnh sửa thông tin</h4>
                     </div>
                     <div className="modal-body">
+                        {popupMessage && (
+                            <p style={{ color: isPopupSuccess ? "green" : "red" }}>
+                                {popupMessage}
+                            </p>
+                        )}
                         <input type="text" value={editUser.fullName} onChange={(e) => setEditUser({ ...editUser, fullName: e.target.value })} placeholder="Họ và tên" />
                         <input type="email" value={editUser.email} onChange={(e) => setEditUser({ ...editUser, email: e.target.value })} placeholder="Email" />
                         <input type="text" value={editUser.phone} onChange={(e) => setEditUser({ ...editUser, phone: e.target.value })} placeholder="Số điện thoại" />
@@ -200,6 +209,7 @@ const Profile = () => {
                     </div>
                 </DraggablePopup>
             )}
+
         </div>
     );
 };

@@ -300,6 +300,44 @@ router.get("/students", async (req, res) => {
         res.status(500).json({ error: "Lỗi khi lấy danh sách học viên" });
     }
 });
+router.post("/students", async (req, res) => {
+    const { fullName, username, email, phone, password } = req.body;
+    if (!fullName || !username || !email || !phone || !password) {
+        return res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin" });
+    }
+
+    try {
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // 🔥 Thêm vào database và lấy id vừa thêm
+        const [result] = await db.execute(
+            "INSERT INTO users (fullName, username, email, phone, password, role) VALUES (?, ?, ?, ?, ?, 'hv')",
+            [fullName, username, email, phone, hashedPassword]
+        );
+
+        // 🔥 Lấy danh sách học viên mới nhất, đảm bảo có `id`
+        const [students] = await db.execute("SELECT id, fullName, username, email, phone FROM users WHERE role = 'hv'");
+
+        res.json({ message: "Thêm học viên thành công", id: result.insertId, students }); // ✅ Trả về cả id và danh sách mới
+    } catch (error) {
+        console.error("Lỗi khi thêm học viên:", error);
+        res.status(500).json({ message: "Lỗi server" });
+    }
+});
+
+router.delete("/students/:id", async (req, res) => {
+    const { id } = req.params;
+    try {
+        const [result] = await db.execute("DELETE FROM users WHERE id = ?", [id]);
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: "Học viên không tồn tại!" });
+        }
+        res.json({ message: "Xóa học viên thành công!" });
+    } catch (error) {
+        res.status(500).json({ message: "Lỗi khi xóa học viên", details: error.message });
+    }
+});
+
 router.get("/students/paid", async (req, res) => {
     try {
         const [rows] = await db.query(`

@@ -16,7 +16,19 @@ const Home = ({ user, token }) => {
     const [news, setNews] = useState([]);
     const navigate = useNavigate();
     const [documents, setDocuments] = useState([]);
-    const [currentUser, setCurrentUser] = useState(user || JSON.parse(localStorage.getItem("user")));
+    // Nếu có user truyền từ props, lấy luôn, ngược lại thử lấy từ localStorage theo vai trò phổ biến
+    const [currentUser, setCurrentUser] = useState(() => {
+        if (user) return user;
+
+        // Ưu tiên đọc theo thứ tự role phổ biến nhất → bạn có thể tùy chỉnh lại
+        const roles = ["hv", "gv", "cm", "ad"];
+        for (let role of roles) {
+            const stored = localStorage.getItem(`${role}_user`);
+            if (stored) return JSON.parse(stored);
+        }
+
+        return null; // Không tìm thấy user nào
+    });
 
     const [showSettings, setShowSettings] = useState(false);
     const [notifications, setNotifications] = useState([]);

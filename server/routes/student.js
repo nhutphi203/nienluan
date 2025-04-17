@@ -93,6 +93,18 @@ router.post("/update-profile", async (req, res) => {
         return res.status(400).json({ message: "Thiếu thông tin bắt buộc!" });
     }
 
+    // Kiểm tra định dạng email hợp lệ
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: "Email không hợp lệ!" });
+    }
+
+    // Kiểm tra số điện thoại VN hợp lệ (bắt đầu bằng 0 và có 10 chữ số)
+    const phoneRegex = /^0\d{9}$/;
+    if (phone && !phoneRegex.test(phone)) {
+        return res.status(400).json({ message: "Số điện thoại không hợp lệ! (Ví dụ: 0912345678)" });
+    }
+
     try {
         db.query("SELECT fullName, email, phone FROM users WHERE id = ?", [id], (err, rows) => {
             if (err) {
@@ -134,6 +146,7 @@ router.post("/update-profile", async (req, res) => {
         res.status(500).json({ message: "Lỗi máy chủ!" });
     }
 });
+
 router.post("/update-password", (req, res) => {
     const { id, oldPassword, newPassword } = req.body;
 
@@ -168,6 +181,7 @@ router.post("/update-password", (req, res) => {
         });
     });
 });
+
 
 router.get("/classes/:userId", (req, res) => {
     const { userId } = req.params;

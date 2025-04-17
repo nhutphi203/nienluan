@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import "./TeacherSchedule.css";
 
 const TeacherSchedule = () => {
     const [schedule, setSchedule] = useState([]);

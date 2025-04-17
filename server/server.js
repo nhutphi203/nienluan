@@ -145,6 +145,37 @@ app.get("/documents/:id", (req, res) => {
 app.get("/", (req, res) => {
     res.send("API đang hoạt động! 🚀");
 });
+app.put('/update/:id', async (req, res) => {
+    const { name, email, phone } = req.body;
+
+    // Kiểm tra định dạng email
+    const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if (!isValidEmail) {
+        return res.status(400).json({ message: 'Email không hợp lệ!' });
+    }
+
+    // Kiểm tra định dạng số điện thoại (10 chữ số, bắt đầu bằng 0 hoặc +84)
+    const isValidPhone = /^(0|\+84)[0-9]{9}$/.test(phone);
+    if (!isValidPhone) {
+        return res.status(400).json({ message: 'Số điện thoại không hợp lệ!' });
+    }
+
+    try {
+        await connection.query(
+            'UPDATE users SET name = ?, email = ?, phone = ? WHERE id = ?',
+            [name, email, phone, req.params.id],
+            (err, results) => {
+                if (err) {
+                    console.error('Error updating user:', err);
+                    return res.status(500).json({ message: 'Lỗi server' });
+                }
+                return res.status(200).json({ message: 'Cập nhật thành công' });
+            }
+        );
+    } catch (error) {
+        return res.status(500).json({ message: 'Lỗi server' });
+    }
+});
 
 app.get("/documents/class/:class_id", (req, res) => {
     const classId = req.params.class_id;

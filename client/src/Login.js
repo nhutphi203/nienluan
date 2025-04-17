@@ -31,9 +31,11 @@ const Login = ({ setUser }) => {
             console.log("Dữ liệu từ API:", data);
 
             if (response.ok) {
-                localStorage.setItem("user", JSON.stringify(data.user));
-                setUser(data.user);
+                const user = data.user;
+                localStorage.setItem(`user`, JSON.stringify(user)); // 👈 Lưu theo role riêng biệt
+                setUser(user);
                 navigate("/home");
+
             } else {
                 setErrorMessage(data.error || "Đăng nhập thất bại");
             }

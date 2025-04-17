@@ -37,7 +37,6 @@ router.delete("/unregister-class/:teacher_id/:class_id", (req, res) => {
     });
 });
 
-
 router.post("/classes/:classId/assign-teacher", (req, res) => {
     const { teacher_id } = req.body;
     const classId = parseInt(req.params.classId, 10);
@@ -46,18 +45,68 @@ router.post("/classes/:classId/assign-teacher", (req, res) => {
         return res.status(400).json({ error: "Dữ liệu không hợp lệ!" });
     }
 
-    const sql = `UPDATE class SET teacher_id = ? WHERE id = ? AND teacher_id IS NULL`;
-    db.query(sql, [teacher_id, classId], (err, result) => {
+    // 1. Lấy lịch học của lớp mới
+    const queryNewClassSchedule = `
+        SELECT pt.date_of_week, pt.start_at, pt.end_at
+        FROM period_time_class ptc
+        JOIN period_time pt ON pt.id = ptc.period_time_id
+        WHERE ptc.class_id = ?
+    `;
+
+    // 2. Lấy lịch học của các lớp mà giáo viên đang dạy
+    const queryTeacherSchedule = `
+        SELECT pt.date_of_week, pt.start_at, pt.end_at
+        FROM class c
+        JOIN period_time_class ptc ON c.id = ptc.class_id
+        JOIN period_time pt ON pt.id = ptc.period_time_id
+        WHERE c.teacher_id = ?
+    `;
+
+    db.query(queryNewClassSchedule, [classId], (err, newClassTimes) => {
         if (err) {
-            console.error("❌ Lỗi khi cập nhật giáo viên:", err);
-            return res.status(500).json({ error: "Lỗi khi cập nhật giáo viên!" });
+            console.error("❌ Lỗi khi lấy lịch lớp mới:", err);
+            return res.status(500).json({ error: "Lỗi khi lấy lịch lớp mới!" });
         }
-        if (result.affectedRows === 0) {
-            return res.status(400).json({ error: "Lớp này đã có giáo viên hoặc không tồn tại!" });
-        }
-        res.json({ message: "✅ Cập nhật giáo viên thành công!" });
+
+        db.query(queryTeacherSchedule, [teacher_id], (err, teacherTimes) => {
+            if (err) {
+                console.error("❌ Lỗi khi lấy lịch giáo viên:", err);
+                return res.status(500).json({ error: "Lỗi khi lấy lịch giáo viên!" });
+            }
+
+            // 3. Kiểm tra trùng lịch
+            const isConflict = newClassTimes.some(newTime => {
+                return teacherTimes.some(teacherTime => {
+                    return (
+                        newTime.date_of_week === teacherTime.date_of_week &&
+                        !(
+                            newTime.end_at <= teacherTime.start_at ||
+                            newTime.start_at >= teacherTime.end_at
+                        )
+                    );
+                });
+            });
+
+            if (isConflict) {
+                return res.status(400).json({ error: "Giáo viên đã có lớp trùng lịch!" });
+            }
+
+            // 4. Không trùng thì gán giáo viên
+            const sql = `UPDATE class SET teacher_id = ? WHERE id = ? AND teacher_id IS NULL`;
+            db.query(sql, [teacher_id, classId], (err, result) => {
+                if (err) {
+                    console.error("❌ Lỗi khi cập nhật giáo viên:", err);
+                    return res.status(500).json({ error: "Lỗi khi cập nhật giáo viên!" });
+                }
+                if (result.affectedRows === 0) {
+                    return res.status(400).json({ error: "Lớp này đã có giáo viên hoặc không tồn tại!" });
+                }
+                res.json({ message: "✅ Gán giáo viên thành công!" });
+            });
+        });
     });
 });
+
 
 router.get("/classes/unassigned", (req, res) => {
     const sql = `
