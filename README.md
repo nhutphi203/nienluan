@@ -25,7 +25,7 @@ Hệ thống bao gồm hơn 20 chức năng, trong đó nổi bật có:
 
 Tạo nhóm học:
 
-Chọn khối lớp (6/7/8), phân loại nhóm (thường – nâng cao).
+Chọn khối lớp (10/11/12), phân loại nhóm (thường – nâng cao).
 
 Gắn thời gian học cụ thể (thứ – buổi – giờ).
 
