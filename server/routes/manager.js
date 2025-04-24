@@ -62,6 +62,60 @@ router.get("/group-options", async (req, res) => {
         res.status(500).json({ message: "Lỗi lấy dữ liệu nhóm học" });
     }
 });
+router.put("/group/:id", async (req, res) => {
+    const { id } = req.params;
+    const { name, subject, type, grade, max_student, period_time_ids } = req.body;
+
+    if (!name || !subject || !type || !grade || !max_student || !Array.isArray(period_time_ids) || period_time_ids.length === 0) {
+        return res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin nhóm học và thời gian học!" });
+    }
+
+    const connection = await db.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        // Kiểm tra nhóm học có tồn tại không
+        const [classRows] = await connection.query("SELECT * FROM class WHERE id = ?", [id]);
+        if (classRows.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({ message: "Nhóm học không tồn tại!" });
+        }
+
+        // Kiểm tra grade
+        const [gradeRows] = await connection.query("SELECT id FROM grade WHERE grade = ?", [grade]);
+        if (gradeRows.length === 0) {
+            await connection.rollback();
+            return res.status(400).json({ message: `Giá trị grade '${grade}' không tồn tại!` });
+        }
+        const gradeId = gradeRows[0].id;
+
+        // Cập nhật class
+        await connection.query(
+            "UPDATE class SET name = ?, subject = ?, type = ?, grade = ?, max_student = ? WHERE id = ?",
+            [name, subject, type, gradeId, max_student, id]
+        );
+
+        // Xoá period_time_class cũ
+        await connection.query("DELETE FROM period_time_class WHERE class_id = ?", [id]);
+
+        // Chèn period_time_class mới
+        const insertSql = "INSERT INTO period_time_class (class_id, period_time_id) VALUES (?, ?)";
+        for (const periodId of period_time_ids) {
+            await connection.query(insertSql, [id, periodId]);
+        }
+
+        await connection.commit();
+
+        res.json({ message: "Cập nhật nhóm học thành công!" });
+    } catch (error) {
+        await connection.rollback();
+        console.error("💥 Lỗi cập nhật nhóm học:", error);
+        res.status(500).json({ message: "Lỗi server, không thể cập nhật nhóm học!" });
+    } finally {
+        connection.release();
+    }
+});
+
 
 
 router.delete('/group/:id', async (req, res) => {
@@ -104,7 +158,7 @@ router.delete('/group/:id', async (req, res) => {
 
 router.post("/group", async (req, res) => {
     try {
-        const { name, subject, type, grade, max_student, period_time_ids } = req.body;
+        const { name, subject, type, grade, max_student, period_time_ids, fee_amount } = req.body;
 
         if (!name || !subject || !type || !grade || !max_student || !period_time_ids || period_time_ids.length === 0) {
             return res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin nhóm học và thời gian học!" });
@@ -117,11 +171,11 @@ router.post("/group", async (req, res) => {
         }
         const gradeId = gradeRows[0].id;
 
-        // Thêm vào bảng class
-        const sql = `INSERT INTO class (name, subject, type, grade, max_student) VALUES (?, ?, ?, ?, ?)`;
-        const [result] = await db.execute(sql, [name, subject, type, gradeId, max_student]);
+        const sql = `INSERT INTO class (name, subject, type, grade, max_student, fee_amount) VALUES (?, ?, ?, ?, ?, ?)`;
+        const [result] = await db.execute(sql, [name, subject, type, gradeId, max_student, fee_amount]);
 
-        const classId = result.insertId; // ID của nhóm học vừa tạo
+        const classId = result.insertId; // ✅ Bây giờ result đã được định nghĩa
+
 
         // Thêm dữ liệu vào bảng trung gian class_period_time
         const periodSql = `INSERT INTO period_time_class (class_id, period_time_id) VALUES (?, ?)`;
@@ -146,40 +200,6 @@ router.get("/classes", async (req, res) => {
         res.status(500).json({ error: "Lỗi lấy danh sách lớp", details: error.message });
     }
 });
-
-router.post("/group", async (req, res) => {
-    try {
-        const { name, subject, type, grade, max_student } = req.body;
-
-        if (!name || !subject || !type || !grade || !max_student) {
-            return res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin nhóm học!" });
-        }
-
-        // Kiểm tra giá trị grade truyền vào
-        console.log("Grade nhận được từ request:", grade);
-
-        // Kiểm tra nếu grade là số hoặc chuỗi
-        const [gradeRows] = await db.execute("SELECT id FROM grade WHERE id = ?", [grade]);
-
-        console.log("Kết quả truy vấn grade:", gradeRows);
-
-        if (gradeRows.length === 0) {
-            return res.status(400).json({ message: `Giá trị grade '${grade}' không tồn tại trong bảng grade!` });
-        }
-
-        const gradeId = gradeRows[0].id; // Lấy ID hợp lệ của grade
-
-        // Thêm vào bảng class
-        const sql = `INSERT INTO class (name, subject, type, grade, max_student) VALUES (?, ?, ?, ?, ?)`;
-        const [result] = await db.execute(sql, [name, subject, type, gradeId, max_student]);
-
-        res.status(201).json({ message: "Nhóm học đã được tạo thành công!", id: result.insertId });
-    } catch (err) {
-        console.error("Lỗi khi tạo nhóm học:", err);
-        res.status(500).json({ message: "Lỗi server, không thể tạo nhóm học!" });
-    }
-});
-
 
 
 // API xóa lớp học
@@ -291,7 +311,7 @@ router.get("/schedules", async (req, res) => {
 router.get("/students", async (req, res) => {
     try {
         const [rows] = await db.execute(`
-            SELECT id, username, email, created_at 
+            SELECT id, username, fullName, email, phone, created_at 
             FROM users 
             WHERE role = 'hv'
         `);

@@ -17,7 +17,9 @@ function ManageGroups() {
         grade: "",
         max_student: "",
         schedule: [],
+        fee_amount: 500000  // ✅ Đặt mặc định học phí ở đây
     });
+
     const [groupOptions, setGroupOptions] = useState({
         subjects: [],
         types: [],
@@ -58,7 +60,11 @@ function ManageGroups() {
             .catch((err) => console.error("Lỗi khi lấy dữ liệu danh mục:", err));
     }, []);
     const handleEdit = (cls) => {
-        setEditingClass(cls);
+        console.log("📌 Đang chỉnh sửa nhóm:", cls);
+        setEditingClass({
+            ...cls,
+            schedule: cls.schedule || [], // Đảm bảo lịch học tồn tại hoặc là mảng rỗng
+        });
     };
 
 
@@ -117,6 +123,7 @@ function ManageGroups() {
             body: JSON.stringify({
                 ...newGroup,
                 period_time_ids: newGroup.schedule, // Đặt period_time_ids từ schedule
+                fee_amount: newGroup.fee_amount // ✅ THÊM DÒNG NÀY
             }),
         })
             .then((res) => res.json())
@@ -145,8 +152,53 @@ function ManageGroups() {
 
             return { ...prevGroup, schedule: updatedSchedule };
         });
-    };
+    }; const handleUpdateGroup = () => {
+        if (!editingClass) {
+            alert("Không có nhóm học nào để chỉnh sửa.");
+            return;
+        }
 
+        // Kiểm tra các trường cần thiết có hợp lệ không
+        if (!editingClass.name || !editingClass.subject || !editingClass.type || !editingClass.grade || !editingClass.max_student) {
+            alert("Vui lòng điền đầy đủ thông tin nhóm học!");
+            return;
+        }
+
+        if (editingClass.schedule.length === 0) {
+            alert("Vui lòng chọn ít nhất một khung giờ học.");
+            return;
+        }
+
+        // Gửi yêu cầu PUT đến API
+        fetch(`http://localhost:5000/manager/group/${editingClass.id}`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                name: editingClass.name,
+                subject: editingClass.subject,
+                type: editingClass.type,
+                grade: editingClass.grade,
+                max_student: editingClass.max_student,
+                period_time_ids: editingClass.schedule, // Gửi các ID của khung giờ học
+            }),
+        })
+            .then((res) => res.json())
+            .then((data) => {
+                if (data.success) { // Kiểm tra phản hồi từ server
+                    alert("Cập nhật thành công!");
+                    setEditingClass(null); // Đóng form chỉnh sửa
+                    fetchGroups(); // Làm mới danh sách nhóm học
+                } else {
+                    alert("Cập nhật thất bại. Lý do: " + data.message);
+                }
+            })
+            .catch((err) => {
+                console.error("❌ Lỗi khi cập nhật nhóm học:", err);
+                alert("Có lỗi xảy ra khi cập nhật.");
+            });
+    };
 
 
 
@@ -231,6 +283,13 @@ function ManageGroups() {
                             <option key={grade || index} value={grade}>{grade}</option>
                         ))}
                 </select>
+                <input
+                    type="number"
+                    placeholder="Học phí"
+                    value={newGroup.fee_amount}
+                    onChange={(e) => setNewGroup({ ...newGroup, fee_amount: e.target.value })}
+                    className="w-full p-2 border rounded mb-2"
+                />
 
                 <select
                     value={newGroup.max_student}
@@ -272,6 +331,8 @@ function ManageGroups() {
                     Tạo nhóm
                 </button>
             </div>
+
+
 
 
             {/* Bảng danh sách nhóm học */}
@@ -322,12 +383,8 @@ function ManageGroups() {
                                     </td>
 
                                     <td className="border p-2 text-center">
-                                        <button
-                                            className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 mr-2"
-                                            onClick={() => handleEdit(cls)}
-                                        >
-                                            Chỉnh sửa
-                                        </button>
+
+
                                         <button
                                             className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
                                             onClick={() => handleDelete(cls.id)}
