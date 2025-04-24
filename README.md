@@ -21,10 +21,102 @@ Mục tiêu của hệ thống là:
 
 ## 4. Các chức năng chính
 Hệ thống bao gồm hơn 20 chức năng, trong đó nổi bật có:
-- **Học viên**: đăng ký nhóm học, xem điểm, xem học phí, thanh toán online.
-- **Giáo viên**: đăng ký dạy, chấm công, nhập điểm, gửi tài liệu cho học viên.
-- **Quản lý**: tạo nhóm học, xếp lịch, chấm công giáo viên, xem báo cáo doanh thu.
-- **Tất cả**: đều có thể quản lý thông tin cá nhân một cách dễ dàng.
+- **Quản lý là người đầu tiên khởi tạo các thành phần của hệ thống:
+
+Tạo nhóm học:
+
+Chọn khối lớp (6/7/8), phân loại nhóm (thường – nâng cao).
+
+Gắn thời gian học cụ thể (thứ – buổi – giờ).
+
+Gán giáo viên cho nhóm:
+
+Chọn giáo viên phù hợp với khối/lịch học.
+
+Giáo viên có thể đăng ký nếu còn nhóm trống.
+
+Cập nhật danh sách học viên:
+
+Nhập thủ công hoặc thêm học viên từ file.
+
+Cấu hình học phí và hình thức thanh toán:
+
+Theo tháng, quý, học kỳ hoặc năm.
+
+Cài đặt lịch giảng dạy chung, phân phối giờ dạy cho từng nhóm.
+
+🎓 B. HỌC VIÊN – ĐĂNG KÝ & HỌC TẬP
+Sau khi nhóm học được tạo, học viên bắt đầu tham gia hệ thống.
+
+Đăng ký tài khoản và đăng nhập.
+
+Đăng ký nhóm học phù hợp:
+
+Dựa theo điểm đầu vào hoặc nguyện vọng.
+
+Hệ thống hiển thị nhóm còn chỗ – thời gian học tương thích.
+
+Thanh toán học phí:
+
+Chọn hình thức đóng học phí.
+
+Hệ thống cập nhật biên nhận thanh toán và thông báo trên giao diện.
+
+Tham gia học tập:
+
+Xem lịch học theo nhóm đã chọn.
+
+Tải tài liệu được giáo viên cung cấp.
+
+Nhận thông báo nhắc học hoặc thay đổi lịch.
+
+Theo dõi kết quả học tập:
+
+Xem điểm từng môn, từng bài kiểm tra.
+
+Lịch sử chuyên cần.
+
+👨‍🏫 C. GIÁO VIÊN – GIẢNG DẠY & ĐÁNH GIÁ
+Giáo viên là người tham gia giảng dạy và đánh giá kết quả học viên.
+
+Đăng ký nhóm giảng dạy:
+
+Chọn từ danh sách nhóm còn trống.
+
+Xem lịch dạy và xác nhận chấm công:
+
+Có thể chọn chấm công thủ công hoặc hệ thống tự động cập nhật sau mỗi buổi dạy.
+
+Đăng tải tài liệu & thông báo:
+
+Cung cấp tài liệu học cho từng nhóm.
+
+Gửi thông báo bài tập, dời lịch học…
+
+Chấm điểm và cập nhật kết quả:
+
+Nhập điểm trực tiếp trên hệ thống.
+
+Điểm được học viên theo dõi tại trang cá nhân.
+
+📊 D. QUẢN LÝ – GIÁM SÁT & BÁO CÁO
+Sau khi hệ thống vận hành, quản lý tiếp tục kiểm tra – giám sát:
+
+Theo dõi chuyên cần:
+
+Hệ thống cảnh báo khi học viên vắng > 5 buổi liên tiếp.
+
+Xem và xuất báo cáo học phí:
+
+Học viên nào đã đóng, còn nợ, lịch sử giao dịch.
+
+Xuất báo cáo lương giáo viên:
+
+Tự động tính dựa trên số buổi dạy – mức lương quy định.
+
+Thống kê toàn trung tâm:
+
+Số lượng học viên – nhóm – kết quả học tập – doanh thu theo tháng.
 
 ## 5. Kiến trúc hệ thống
 Về mặt kỹ thuật, hệ thống được xây dựng theo mô hình Client – Server:
